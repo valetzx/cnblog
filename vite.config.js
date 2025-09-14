@@ -7,8 +7,8 @@ import { devHtmlTransformer, prodHtmlTransformer } from '@meituan-nocode/vite-pl
 import react from '@vitejs/plugin-react';
 
 const isProdEnv = process.env.NODE_ENV === 'production';
-const PUBLIC_PATH = isProdEnv ? process.env.PUBLIC_PATH + '/' : process.env.PUBLIC_PATH;
-const OUT_DIR = isProdEnv ? 'build/' : 'build';
+const PUBLIC_PATH = '/';
+const OUT_DIR = 'build';
 const PLUGINS = isProdEnv ? [
   react(),
   prodHtmlTransformer(process.env.CHAT_VARIABLE)
