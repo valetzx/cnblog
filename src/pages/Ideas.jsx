@@ -360,7 +360,7 @@ ${chunks}
   };
 
   return (
-    <div className="flex flex-col min-h-screen h-[calc(100vh-4rem)] md:h-[calc(100vh-1rem)] overflow-y-auto p-2 sm:p-4 pb-10 max-w-7xl mx-auto w-full bg-gray-50 dark:bg-slate-900 rounded-lg">
+    <div className="flex flex-col min-h-screen h-[calc(100vh-4rem)] md:h-[calc(100vh-1rem)] overflow-y-auto p-2 sm:p-4 pb-10 mx-auto w-full bg-gray-50 dark:bg-slate-900 rounded-lg">
       {/* IdeasTop 父容器 */}
       <div className="w-full min-w-0 overflow-x-visible">
         <IdeasTop

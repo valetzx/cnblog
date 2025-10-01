@@ -82,7 +82,7 @@ const LocalStorage = () => {
 
   return (
     <div className="min-h-screen p-4 pb-10">
-      <div className="max-w-6xl mx-auto">
+      <div className="mx-auto">
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">

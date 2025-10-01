@@ -264,7 +264,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen p-2 sm:p-4 pb-10">
-      <div className="max-w-6xl mx-auto">        
+      <div className="mx-auto">        
         <TagFilter 
           tags={allIssues} 
           selectedTag={selectedTag} 
