@@ -46,7 +46,7 @@ const LongUrlConverter = () => {
       setBinaryResult(stringToBinary(url));
       setError('');
     } catch (e) {
-      setError('请输入有效的URL格式，例如: https://nocode.cn');
+      setError('请输入有效的URL格式，例如: https://cnb.cool');
     }
   };
 
@@ -95,7 +95,7 @@ const LongUrlConverter = () => {
                     id="url"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://nocode.cn"
+                    placeholder="https://cnb.cool"
                     className="flex-1"
                   />
                   <Button onClick={handleConvertToBinary}>

@@ -43,6 +43,19 @@ const Index = () => {
         baseRepo: parsedSettings.baseRepo || import.meta.env.VITE_BASE_REPO || prev.baseRepo,
         cnbToken: parsedSettings.cnbToken || import.meta.env.VITE_CNB_TOKEN || prev.cnbToken
       }));
+    } else {
+      // 本地没有设置数据时，使用环境变量初始化默认设置
+      setSettings(prev => {
+        const defaultSettings = {
+          ...prev,
+          baseRepo: import.meta.env.VITE_BASE_REPO || prev.baseRepo
+        };
+
+        // 将默认设置保存到本地存储
+        localStorage.setItem('settingsData', JSON.stringify(defaultSettings));
+
+        return defaultSettings;
+      });
     }
     
     // 监听存储变化事件
@@ -96,11 +109,12 @@ const Index = () => {
 
   useEffect(() => {
     const fetchIssues = async () => {
+      // 检查必要的设置是否完整，避免构建不完整的URL
       if (!settings.apiUrl || !settings.baseRepo || !settings.cnbToken) {
-        setError('缺少必要的 API 配置');
+        console.log('设置不完整，跳过用户设置的API请求');
         return;
       }
-      
+
       try {
         // 获取开启状态的问题
         const openResponse = await fetch(
@@ -238,90 +252,94 @@ const Index = () => {
     return luminance > 0.5 ? '#333333' : '#ffffff';
   };
 
-  // 渲染标签
-  const renderLabels = (labels) => {
-    if (!labels || labels.length === 0) return null;
-    const isSingleLine = labels.length <= 3;
-    return (
-      <div className={`overflow-x-auto pb-2 -mx-2 px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] ${isSingleLine ? 'h-6' : ''}`}>
-        <div className="flex flex-nowrap gap-2 min-w-max">
-          {labels.map((label, index) => (
-            <div
-              key={index}
-              className="px-2 py-0.5 text-xs rounded font-medium mr-1 cnb-label-item light shrink-0"
-              style={{
-                backgroundColor: label.color,
-                color: getTextColorFromBg(label.color)
-              }}
-            >
-              <span title={label.name}>{label.name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
+// 渲染标签
+const renderLabels = (labels, state, hideStateLabels) => {
+  // 准备标签列表，根据设置决定是否添加状态标签
+  let allLabels = [...(labels || [])];
+  
+  // 只有当不需要隐藏状态标签时，才添加状态标签到最前面
+  if (!hideStateLabels) {
+    const stateLabel = {
+      name: state === 'open' ? '开启' : '关闭',
+      color: state === 'open' ? '#dcfce7' : '#fee2e2'
+    };
+    allLabels = [stateLabel, ...allLabels];
+  }
+  
+  if (allLabels.length === 0) return null;
+  const isSingleLine = allLabels.length <= 3;
+  
   return (
-    <div className="min-h-screen p-2 sm:p-4 pb-10">
-      <div className="mx-auto">        
-        <TagFilter 
-          tags={allIssues} 
-          selectedTag={selectedTag} 
-          onTagChange={setSelectedTag}
-          onSearchResults={handleSearchResults}
-        />
+    <div className={`overflow-x-auto pb-2 -mx-2 px-2 overflow-y-hidden ${isSingleLine ? 'h-6' : ''}`}>
+      <div className="flex flex-nowrap gap-0.5 min-w-max">
+        {allLabels.map((label, index) => (
+          <div
+            key={index}
+            className="px-2 py-0.5 text-xs rounded font-medium mr-1 cnb-label-item light shrink-0"
+            style={{
+              backgroundColor: label.color,
+              color: getTextColorFromBg(label.color)
+            }}
+          >
+            <span title={label.name}>{label.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
-        <PinnedArticleCard
-          article={pinnedArticles[0]}
-        />
-        
-        <div>
-          {displayIssues.length > 0 ? (
-            <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 sm:gap-4 space-y-4">
-              {displayIssues.map((issue) => (
-                <div key={issue.number} className="break-inside-avoid">
-                  <Card className="w-full hover:shadow-md transition-shadow flex flex-col">
-                    <Link to={`/info/${issue.number}`} className="flex flex-col h-full">
-                      <CardHeader className="pb-3 flex-shrink-0">
-                        <CardTitle className="text-base sm:text-lg line-clamp-2">
-                          {settings.hideIssueNumbers ? null : `#${issue.number} `}{issue.title}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex-grow flex flex-col">
-                        <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                          <div className="text-xs sm:text-sm text-gray-500">
-                            更新于 {formatDate(issue.updated_at)}
-                          </div>
-                          <div className="text-xs sm:text-sm text-gray-600">
-                            评论: {issue.comment_count}
-                          </div>
+return (
+  <div className="min-h-screen p-2 sm:p-4 pb-10">
+    <div className="mx-auto">        
+      <TagFilter 
+        tags={allIssues} 
+        selectedTag={selectedTag} 
+        onTagChange={setSelectedTag}
+        onSearchResults={handleSearchResults}
+      />
+
+      <PinnedArticleCard
+        article={pinnedArticles[0]}
+      />
+      
+      <div>
+        {displayIssues.length > 0 ? (
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 sm:gap-4 space-y-4">
+            {displayIssues.map((issue) => (
+              <div key={issue.number} className="break-inside-avoid">
+                <Card className="w-full hover:shadow-md transition-shadow flex flex-col">
+                  <Link to={`/info/${issue.number}/${settings.baseRepo}`} className="flex flex-col h-full">
+                    <CardHeader className="pb-3 flex-shrink-0">
+                      <CardTitle className="text-base sm:text-lg line-clamp-2">
+                        {settings.hideIssueNumbers ? null : `#${issue.number} `}{issue.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-grow flex flex-col pb-2">
+                      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                        <div className="text-xs sm:text-sm text-gray-500">
+                          更新于 {formatDate(issue.updated_at)}
                         </div>
-                        <div className="mb-3 flex-grow">
-                          {renderLabels(issue.labels)}
+                        <div className="text-xs sm:text-sm text-gray-600">
+                          评论: {issue.comment_count}
                         </div>
-                        {settings.hideStateLabels ? null : (
-                          <div className="flex items-center justify-between flex-shrink-0 mt-auto">
-                            <span className={`px-2 py-1 text-xs rounded ${
-                              issue.state === 'open' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {issue.state === 'open' ? '开启' : '关闭'}
-                            </span>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Link>
-                  </Card>
-                </div>
-              ))}
-            </div>
-          ) : (
+                      </div>
+                      <div className="mb-3 flex-grow">
+                        {/* 传入状态和隐藏设置 */}
+                        {renderLabels(issue.labels, issue.state, settings.hideStateLabels)}
+                      </div>
+                      {/* 移除原来单独的状态显示区域，逻辑已整合到标签中 */}
+                    </CardContent>
+                  </Link>
+                </Card>
+              </div>
+            ))}
+          </div>
+        ) : (
             <div className="text-center py-8 text-gray-500">
               暂无问题
             </div>
-          )}
+        )}
         </div>
       </div>
     </div>

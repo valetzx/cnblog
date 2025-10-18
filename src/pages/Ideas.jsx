@@ -131,7 +131,7 @@ const Ideas = () => {
         // 使用知识库检索
         // 第一步：查询知识库
         const knowledgeResponse = await fetch(
-          `https://db0kqspitke0bs.database.nocode.cn/functions/v1/cnbapi/${knowledgeRepo}/-/knowledge/base/query`,
+          `${import.meta.env.VITE_API_URL}/${knowledgeRepo}/-/knowledge/base/query`,
           {
             method: 'POST',
             headers: {
@@ -177,7 +177,7 @@ ${chunks}
         
         // 第二步：调用 AI 接口
         const aiResponse = await fetch(
-          'https://db0kqspitke0bs.database.nocode.cn/functions/v1/cnbapi/cnb/docs/-/ai/chat/completions',
+          `${import.meta.env.VITE_API_URL}/cnb/docs/-/ai/chat/completions`,
           {
             method: 'POST',
             headers: {
@@ -360,7 +360,7 @@ ${chunks}
   };
 
   return (
-    <div className="flex flex-col min-h-screen h-[calc(100vh-4rem)] md:h-[calc(100vh-1rem)] overflow-y-auto p-2 sm:p-4 pb-10 mx-auto w-full bg-gray-50 dark:bg-slate-900 rounded-lg">
+    <div className="flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-1rem)] overflow-y-auto p-2 sm:p-4 pb-10 mx-auto w-full bg-gray-50 dark:bg-slate-900 rounded-lg">
       {/* IdeasTop 父容器 */}
       <div className="w-full min-w-0 overflow-x-visible">
         <IdeasTop

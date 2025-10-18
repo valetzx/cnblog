@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import ImagePreview from '@/components/ImagePreview';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import MovieCard from "./movieCard.jsx";
+import CachedAvatar from '@/components/CachedAvatar';
+import { Link } from 'react-router-dom';
 
 const Commit = () => {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [initialLoad, setInitialLoad] = useState(true);
-  const [selectedTag, setSelectedTag] = useState('all'); // 默认'all'
+  const [selectedTag, setSelectedTag] = useState('all');
   const [searchResults, setSearchResults] = useState('all');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewImages, setPreviewImages] = useState([]);
@@ -213,11 +215,11 @@ const Commit = () => {
           <img
             src={avatarUrl}
             alt={`${nickname || username}的头像`}
-            className="rounded-full w-8 h-8 object-cover border border-gray-200"
+            className="rounded-full w-4 h-4 object-cover border border-gray-200"
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="rounded-full w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-800 border border-blue-200 font-medium">
+          <div className="rounded-full w-4 h-4 flex items-center justify-center bg-blue-100 text-blue-800 border border-blue-200 font-medium">
             {initial}
           </div>
         )}
@@ -257,10 +259,12 @@ const Commit = () => {
         {/* 评论卡片列表（根据标签控制） */}
         {selectedTag !== '电影' && filteredCards.map((card, index) => (
           <Card key={card.commentId || index} className="break-inside-avoid">
-            <CardHeader>
+            <CardHeader className="pb-2">
               <div className="flex items-center space-x-2">
-                <Avatar username={card.username} nickname={card.title} />
-                <CardTitle>{card.title}</CardTitle>
+                <Link to={`/user/${card.username}`} className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+                  <CachedAvatar username={card.username} nickname={card.title} />
+                  <CardTitle className="text-base sm:text-lg cursor-pointer">{card.title}</CardTitle>
+                </Link>
               </div>
               <div className="text-sm text-gray-500">
                 {formatDate(card.createdAt)}

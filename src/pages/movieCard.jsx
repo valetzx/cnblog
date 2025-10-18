@@ -138,8 +138,8 @@ const MovieCard = () => {
             className="w-full h-auto rounded-t-lg object-cover"
           />
           <div className="p-6">
-            <h2 className="text-2xl font-bold">{movieData.mov_title}</h2>
-            <p className="text-gray-600 mt-2">{movieData.mov_text}</p>
+            <h2 className="text-xl font-bold">{movieData.mov_title}</h2>
+            <p className="whitespace-pre-line mb-2">{movieData.mov_text}</p>
             <div className="flex items-center justify-between mt-4">
               <span className="inline-block bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-md">电影</span>
               <a href="https://www.cikeee.cc/" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 hover:text-gray-700">来自此刻电影</a>
@@ -149,35 +149,35 @@ const MovieCard = () => {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-6">
-          <DialogHeader className="sticky top-0 bg-background z-10">
-            <DialogTitle>{movieData.mov_title}</DialogTitle>
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[85vh] overflow-y-auto mx-auto my-auto rounded-lg shadow-xl">
+          <DialogHeader className="sticky top-0 bg-background z-10 p-4 sm:p-6 border-b">
+            <DialogTitle className="text-lg sm:text-xl">{movieData.mov_title}</DialogTitle>
           </DialogHeader>
-          <div className="p-6 space-y-4">
-            <p className="text-gray-600">{movieData.mov_text}</p>
+          <div className="p-4 sm:p-6 space-y-4">
+            <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base">{movieData.mov_text}</p>
             <div className="flex items-center justify-between mt-4">
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 text-sm sm:text-base">
               <div className="flex justify-between">
-                <span className="text-gray-500">导演</span>
-                <span>{movieData.mov_director}</span>
+                <span className="text-gray-500 dark:text-gray-400">导演</span>
+                <span className="text-right dark:text-gray-200">{movieData.mov_director}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">年份</span>
-                <span>{movieData.mov_year}</span>
+                <span className="text-gray-500 dark:text-gray-400">年份</span>
+                <span className="dark:text-gray-200">{movieData.mov_year}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">评分</span>
-                <span>{movieData.mov_rating}</span>
+                <span className="text-gray-500 dark:text-gray-400">评分</span>
+                <span className="dark:text-gray-200">{movieData.mov_rating}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">类型</span>
-                <span>{movieData.mov_type?.join(', ')}</span>
+                <span className="text-gray-500 dark:text-gray-400">类型</span>
+                <span className="text-right dark:text-gray-200">{movieData.mov_type?.join(', ')}</span>
               </div>
             </div>
             <div className="mt-4">
-              <h3 className="font-semibold mb-2">剧情简介</h3>
-              <p className="text-gray-600 whitespace-pre-line">{movieData.mov_intro}</p>
+              <h3 className="font-semibold mb-2 text-sm sm:text-base dark:text-gray-200">剧情简介</h3>
+              <p className="text-gray-600 whitespace-pre-line text-sm sm:text-base dark:text-gray-300">{movieData.mov_intro}</p>
             </div>
           </div>
         </DialogContent>

@@ -1,4 +1,4 @@
-import { HomeIcon, FileTextIcon, SettingsIcon, Compass, Link, Globe, Pyramid as Panorama, Film, Database } from 'lucide-react'
+import { HomeIcon, FileTextIcon, SettingsIcon, Compass, Link, Globe, Pyramid as Panorama, Film, Database, UserIcon } from 'lucide-react'
 import Index from "./pages/Index.jsx";
 import Commit from "./pages/Commit.jsx";
 import Settings from "./pages/Settings.jsx";
@@ -9,6 +9,8 @@ import LongUrlConverter from "@/ptools/LongUrlConverter.jsx";
 import WebView from "@/ptools/WebView.jsx";
 import OverallView from "@/ptools/OverallView.jsx";
 import LocalStorage from "@/ptools/LocalStorage.jsx";
+import User from "./pages/User.jsx";
+import Repo from "./pages/Repo.jsx";
 
 /**
  * Central place for defining the navigation items. Used for navigation components and routing.
@@ -40,9 +42,33 @@ export const navItems = [
   },
   {
     title: "Info",
+    to: "/info/:number/*",
+    icon: <FileTextIcon className="h-4 w-4" />,
+    page: <Info />,
+  },
+  {
+    title: "Info",
     to: "/info/:number",
     icon: <FileTextIcon className="h-4 w-4" />,
     page: <Info />,
+  },
+  {
+    title: "User",
+    to: "/user",
+    icon: <UserIcon className="h-4 w-4" />,
+    page: <User />,
+  },
+  {
+    title: "User",
+    to: "/user/:username",
+    icon: <UserIcon className="h-4 w-4" />,
+    page: <User />,
+  },
+  {
+    title: "Repo",
+    to: "/repo/*",
+    icon: <FileTextIcon className="h-4 w-4" />,
+    page: <Repo />,
   },
   {
     title: "LongUrlConverter",

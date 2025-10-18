@@ -8,19 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import ImagePreview from '@/components/ImagePreview';
 import CachedAvatar from '@/components/CachedAvatar';
-import { toast } from '@/components/ui/sonner';
-import AddCommit from '@/cnbRepos/addCommit';
-import {
-  saveCommentsToCache,
-  getCommentsFromCache,
-  isCommentCacheValid,
-  processCommentData
-} from '@/cnbUtils/commentCache';
 
 const Info = () => {
-  const params = useParams();
-  const repopath = params['*'] || ''; // 使用通配符 * 获取仓库路径
-  const { number } = useParams(); // 获取issue编号
+  const { number } = useParams();
   const [issue, setIssue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,8 +21,6 @@ const Info = () => {
   const [previewImages, setPreviewImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [hideStateLabels, setHideStateLabels] = useState(false);
-  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' 或 'desc'，默认最新在前
-  const [sortBy, setSortBy] = useState('created_at');
   
   // 从浏览器存储中获取设置
   const [settings, setSettings] = useState(() => {
@@ -97,14 +85,21 @@ const Info = () => {
       const cnbToken = settings.cnbToken || import.meta.env.VITE_CNB_TOKEN;
       
       // 检查必要配置是否存在
-      if (!baseRepo) {
+      if (!apiUrl || !baseRepo) {
         setError('缺少必要的 API 配置，请在设置中配置 API URL 和 Base Repository');
+        setLoading(false);
+        return;
+      }
+      
+      // 检查 CNB Token 是否存在
+      if (!cnbToken) {
+        setError('缺少 CNB Token，请在设置中配置');
         setLoading(false);
         return;
       }
 
       try {
-        const response = await fetch(`${apiUrl}/${repopath}/-/issues/${number}`, {
+        const response = await fetch(`${apiUrl}/${baseRepo}/-/issues/${number}`, {
           headers: {
             'accept': 'application/json',
             'Authorization': `Bearer ${cnbToken}`
@@ -135,40 +130,15 @@ const Info = () => {
     
     setCommentsLoading(true);
     setCommentsError(null);
+    const apiUrl = settings.apiUrl || import.meta.env.VITE_API_URL;
+    const baseRepo = settings.baseRepo || import.meta.env.VITE_BASE_REPO;
+    const cnbToken = settings.cnbToken || import.meta.env.VITE_CNB_TOKEN;
+    
+    const existingIds = new Set(cards.filter(c => c.commentId).map(c => c.commentId));
     
     try {
-      // 首先检查缓存是否有效
-      const cacheValid = await isCommentCacheValid(repopath, number);
-
-      if (cacheValid) {
-        // 从缓存加载评论
-        const cachedComments = await getCommentsFromCache(repopath, number, sortBy, sortOrder);
-        if (cachedComments.length > 0) {
-          // 处理所有缓存评论，确保按当前排序设置排序
-          const processedComments = cachedComments.map(processCommentData);
-
-          // 按指定字段和顺序排序
-          processedComments.sort((a, b) => {
-            const dateA = new Date(sortBy === 'updated_at' ? a.updatedAt || a.createdAt : a.createdAt);
-            const dateB = new Date(sortBy === 'updated_at' ? b.updatedAt || b.createdAt : b.createdAt);
-            return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-          });
-
-          setCards(processedComments);
-          setCommentsLoading(false);
-          return;
-        }
-      }
-
-      // 缓存无效或没有缓存，从API加载
-      const apiUrl = settings.apiUrl || import.meta.env.VITE_API_URL;
-      const baseRepo = settings.baseRepo || import.meta.env.VITE_BASE_REPO;
-      const cnbToken = settings.cnbToken || import.meta.env.VITE_CNB_TOKEN;
-
-      const existingIds = new Set(cards.filter(c => c.commentId).map(c => c.commentId));
-
       // 使用 pageNum 和 sizeNum 参数
-      const res = await fetch(`${apiUrl}/${repopath}/-/issues/${number}/comments?page=${settings.pageNum}&page_size=${settings.sizeNum}`, {
+      const res = await fetch(`${apiUrl}/${baseRepo}/-/issues/${number}/comments?page=${settings.pageNum}&page_size=${settings.sizeNum}`, {
         method: 'GET',
         headers: {
           'accept': 'application/json',
@@ -187,26 +157,37 @@ const Info = () => {
       
       data.forEach(c => {
         if (existingIds.has(c.id)) return;
+        let body = c.body || '';
+        const images = [];
+        // 修复图片提取逻辑
+        body = body.replace(/<img(?=[^>]*class="[^"]*cnb-md-image__upload[^"]*")(?=[^>]*src="([^"]+)")[^>]*>/g, (_, src) => {
+          images.push(`https://images.weserv.nl?url=https://cnb.cool${src}`);
+          return '';
+        });
+        // 处理其他图片
+        body = body.replace(/<img[^>]*src="([^"]+)"[^>]*>/g, (_, src) => {
+          images.push(src);
+          return '';
+        });
+        body = body.replace(/<[^>]+>/g, '');
         
-        const processedComment = processCommentData(c);
-        newCards.push(processedComment);
+        newCards.push({
+          commentId: c.id,
+          title: c.author?.nickname || c.author?.username || '匿名用户',
+          username: c.author?.username || 'anonymous',
+          description: body.trim() || '无文本内容',
+          images,
+          createdAt: c.created_at
+        });
         updated = true;
       });
       
       if (updated) {
-        // 按创建时间排序，根据 sortOrder 决定顺序
-        newCards.sort((a, b) => {
-          const dateA = new Date(sortBy === 'updated_at' ? a.updatedAt || a.createdAt : a.createdAt);
-          const dateB = new Date(sortBy === 'updated_at' ? b.updatedAt || b.createdAt : b.createdAt);
-          return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-        });
+        // 按创建时间排序，最新的在前
+        newCards.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setCards(newCards);
-
-        // 保存到缓存
-        await saveCommentsToCache(data, repopath, number);
       } else {
-        // 使用toast提示而不是设置错误状态
-        toast.error('没有新的评论可加载', { duration: 3000, position: 'top-right' });
+        setCommentsError('没有新的评论可加载');
       }
     } catch (err) {
       console.error('加载评论失败', err);
@@ -222,13 +203,6 @@ const Info = () => {
       loadComments();
     }
   }, [issue]);
-
-  // 监听排序状态变化，重新加载评论
-  useEffect(() => {
-    if (cards.length > 0) {
-      loadComments();
-    }
-  }, [sortOrder, sortBy]);
 
   // 头像组件
   const Avatar = ({ username, nickname, className = "" }) => {
@@ -313,20 +287,11 @@ const Info = () => {
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-4 break-words">{issue.title}</h1>
           
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-slate-700">
-            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-2 sm:mb-0">
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-slate-700">
+            <div className="flex items-center space-x-4">
               <div className="flex items-center">
                 <span className="text-gray-600 dark:text-gray-300 mr-2">作者:</span>
-                <a
-                  href={`/user/${issue.author?.username}`}
-                  className="font-medium text-gray-800 dark:text-gray-200"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.location.hash = `/user/${issue.author?.username}`;
-                  }}
-                >
-                  {issue.author?.nickname || issue.author?.username}
-                </a>
+                <span className="font-medium text-gray-800 dark:text-gray-200">{issue.author?.nickname || issue.author?.username}</span>
               </div>
               <div className="flex items-center">
                 <span className="text-gray-600 dark:text-gray-300 mr-2">更新时间:</span>
@@ -381,28 +346,17 @@ const Info = () => {
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">评论</h2>
-            <div className="flex space-x-2">
-            
-              <Button
-                variant="outline"
-                onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-                className="flex items-center space-x-1"
-              >
-                <span>{sortOrder === 'desc' ? '时间倒序' : '时间正序'}</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {sortOrder === 'desc' ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 13l5 5m0 0l5-5m-5 5V6" />
-                  )}
-                </svg>
-              </Button>
-              <AddCommit
-                repopath={repopath}
-                number={number}
-                onCommentAdded={loadComments}
-              />
-            </div>
+            <Button onClick={loadComments} disabled={commentsLoading}>
+              {commentsLoading ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  加载中...
+                </span>
+              ) : '刷新评论'}
+            </Button>
           </div>
           
           {commentsError && (
@@ -416,6 +370,9 @@ const Info = () => {
           ) : cards.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 dark:text-gray-400 mb-4">暂无评论</p>
+              <Button onClick={loadComments} disabled={commentsLoading}>
+                {commentsLoading ? '加载中...' : '加载评论'}
+              </Button>
             </div>
           ) : (
             <div className="space-y-6">
@@ -446,36 +403,7 @@ const Info = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-grow">
-                      <div className="prose max-w-none dark:prose-invert">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            h1: ({node, ...props}) => <h1 className="text-2xl font-bold mt-6 mb-4 text-gray-800 dark:text-gray-100 break-words" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="text-xl font-bold mt-5 mb-3 text-gray-800 dark:text-gray-100 break-words" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-lg font-bold mt-4 mb-2 text-gray-800 dark:text-gray-100 break-words" {...props} />,
-                            p: ({node, ...props}) => <p className="mb-3 leading-relaxed text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                            ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                            li: ({node, ...props}) => <li className="mb-1 text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                            a: ({node, ...props}) => <a className="text-blue-600 hover:underline dark:text-blue-400 break-all" {...props} />,
-                            img: ({node, ...props}) => (
-                              <img
-                                {...props}
-                                className="max-w-full h-auto rounded-lg my-2 cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => handleImageClick([props.src], 0)}
-                              />
-                            ),
-                            code: ({node, ...props}) => <code className="bg-gray-100 px-1 py-0.5 rounded text-sm dark:bg-slate-700 break-all" {...props} />,
-                            pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded-lg overflow-x-auto my-3 dark:bg-slate-700" {...props} />,
-                            blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-3 dark:border-slate-600 break-words" {...props} />,
-                            table: ({node, ...props}) => <table className="min-w-full border-collapse border border-gray-300 my-3 dark:border-slate-600" {...props} />,
-                            th: ({node, ...props}) => <th className="border border-gray-300 px-3 py-2 bg-gray-50 font-medium dark:border-slate-600 dark:bg-slate-700 break-words" {...props} />,
-                            td: ({node, ...props}) => <td className="border border-gray-300 px-3 py-2 dark:border-slate-600 break-words" {...props} />,
-                          }}
-                        >
-                          {card.description}
-                        </ReactMarkdown>
-                      </div>
+                      <p className="text-gray-700 mb-4 dark:text-gray-300 break-words">{card.description}</p>
                       {card.images && card.images.length > 0 && (
                         <div className="grid grid-cols-2 gap-2 mb-3">
                           {card.images.slice(0, 4).map((img, imgIndex) => (

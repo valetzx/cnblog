@@ -1,11 +1,12 @@
 import SettingsPage from '@/pages/Settings';
+import UserSettings from '@/components/UserSettings';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { SquarePlus, Home, Compass, Settings } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DialogContent, DialogTitle, Dialog, DialogHeader, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect } from 'react';
+import { getUserInfo } from '@/cnbUtils/indexedDB';
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(true);
@@ -16,8 +17,33 @@ const Sidebar = () => {
   const [showEasterEgg, setShowEasterEgg] = useState(false);
   const [pressTimer, setPressTimer] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [userInfo, setUserInfo] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 加载用户信息
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      try {
+        const user = await getUserInfo();
+        setUserInfo(user);
+      } catch (error) {
+        console.error('加载用户信息失败:', error);
+      }
+    };
+
+    loadUserInfo();
+
+    // 监听存储变化事件，以便在其他页面登录/登出时更新状态
+    const handleStorageChange = (event) => {
+      if (event.key === 'settingsUpdated') {
+        loadUserInfo();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   useEffect(() => {
     let requestId = null;
@@ -76,7 +102,7 @@ const Sidebar = () => {
   return (
     <>
       {/* 桌面端侧边栏 - 固定定位 */}
-      <div className="hidden md:flex flex-col fixed top-0 left-0 h-screen bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 transition-all duration-300 z-40"
+      <div className="hidden md:flex flex-col fixed top-0 left-0 h-screen bg-white dark:bg-card border-r border-gray-200 dark:border-slate-700 transition-all duration-300 z-40"
            style={{ width: collapsed ? '64px' : '256px' }}>
         {/* 顶部内容 */}
         <div className="flex-1 p-4">
@@ -131,10 +157,10 @@ const Sidebar = () => {
             </Link>
             
             <Link 
-              to="/ideas" 
+              to="/user" 
               className="flex items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
             >
-              <Compass size={24} className={`flex-shrink-0 ${location.pathname === '/ideas' ? 'text-[#838EF8]' : ''}`} />
+              <Compass size={24} className={`flex-shrink-0 ${location.pathname === '/user' ? 'text-[#838EF8]' : ''}`} />
               {!collapsed && <span className="ml-3 whitespace-nowrap text-gray-800 dark:text-gray-200">探索</span>}
             </Link>
             
@@ -217,8 +243,25 @@ const Sidebar = () => {
                 variant="ghost"
                 className="flex items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors w-full"
               >
-                <Settings size={24} className={`flex-shrink-0 ${location.pathname === '/settings' ? 'text-[#838EF8]' : ''}`} />
-                {!collapsed && <span className="ml-3 whitespace-nowrap text-gray-800 dark:text-gray-200">设置</span>}
+                {userInfo ? (
+                  <>
+                    <img
+                      src={userInfo.avatar_url || `https://cnb.cool/users/${userInfo.username}/avatar/s`}
+                      alt={userInfo.nickname || userInfo.username}
+                      className="max-w-6 max-h-6 rounded-full object-contain"
+                    />
+                    {!collapsed && (
+                      <span className="ml-3 whitespace-nowrap text-gray-800 dark:text-gray-200">
+                        {userInfo.nickname || userInfo.username}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Settings size={24} className="flex-shrink-0" />
+                    {!collapsed && <span className="ml-3 whitespace-nowrap text-gray-800 dark:text-gray-200">设置</span>}
+                  </>
+                )}
               </Button>
             </DialogTrigger>
             <DialogContent className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 max-w-2xl max-h-[90vh] overflow-y-auto w-[90vw] sm:w-auto sm:min-w-[500px] rounded-lg [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] p-0">
@@ -226,7 +269,7 @@ const Sidebar = () => {
                 <DialogTitle>设置</DialogTitle>
               </DialogHeader>
               <div className="p-6 pt-4">
-                <SettingsPage isDialog={true} onClose={() => setSettingsOpen(false)} />
+                <UserSettings onClose={() => setSettingsOpen(false)} />
               </div>
             </DialogContent>
           </Dialog>
@@ -234,7 +277,7 @@ const Sidebar = () => {
       </div>
 
       {/* 移动端底部导航栏 - 固定定位，不会随页面滚动而移动 */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 z-50">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-card border-t border-gray-200 dark:border-slate-700 z-50">
         <div className="flex justify-around items-center p-2">
           <Link 
             to="/" 
@@ -244,10 +287,10 @@ const Sidebar = () => {
           </Link>
           
           <Link 
-            to="/ideas" 
+            to="/user" 
             className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors min-w-[60px]"
           >
-            <Compass size={24} className={location.pathname === '/ideas' ? 'text-[#838EF8]' : ''} />
+            <Compass size={24} className={location.pathname === '/user' ? 'text-[#838EF8]' : ''} />
           </Link>
           
           <Link 
@@ -263,7 +306,15 @@ const Sidebar = () => {
                 variant="ghost" 
                 className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors min-w-[60px] h-auto"
               >
-                <Settings size={24} className={location.pathname === '/settings' ? 'text-[#838EF8]' : ''} />
+                {userInfo ? (
+                  <img
+                    src={userInfo.avatar_url || `https://cnb.cool/users/${userInfo.username}/avatar/s`}
+                    alt={userInfo.nickname || userInfo.username}
+                    className="max-w-6 max-h-6 rounded-full object-contain"
+                  />
+                ) : (
+                  <Settings size={24} />
+                )}
               </Button>
             </DialogTrigger>
             <DialogContent className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 max-w-2xl max-h-[90vh] overflow-y-auto w-[90vw] sm:w-auto sm:min-w-[500px] rounded-lg [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] p-0">
@@ -271,7 +322,7 @@ const Sidebar = () => {
                 <DialogTitle>设置</DialogTitle>
               </DialogHeader>
               <div className="p-6 pt-4">
-                <SettingsPage isDialog={true} onClose={() => setSettingsOpen(false)} />
+                <UserSettings isDialog={true} onClose={() => setSettingsOpen(false)} />
               </div>
             </DialogContent>
           </Dialog>

@@ -47,10 +47,16 @@ const PinnedArticleCard = ({ article, onClick }) => {
     // 合并默认数据和随机条目
     const mergedPinnedArticles = [...defaultPinnedArticles];
     if (randomOpenItem) {
+      // 从localStorage获取设置
+      const savedSettings = localStorage.getItem('settingsData');
+      const settings = savedSettings ? JSON.parse(savedSettings) : {
+        baseRepo: import.meta.env.VITE_BASE_REPO || ''
+      };
+
       mergedPinnedArticles.push({
         id: Date.now(), // 使用时间戳作为唯一 ID
         title: randomOpenItem.title,
-        link: `/#/info/${randomOpenItem.number}`,
+        link: `/#/info/${randomOpenItem.number}/${settings.baseRepo}`,
       });
     }
 
