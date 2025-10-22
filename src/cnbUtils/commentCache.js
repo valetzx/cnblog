@@ -126,7 +126,6 @@ export const getCommentCacheMetadata = async (repopath, issueNumber) => {
   }
 };
 
-// 检查缓存是否有效（1小时内有效）
 export const isCommentCacheValid = async (repopath, issueNumber) => {
   try {
     const metadata = await getCommentCacheMetadata(repopath, issueNumber);
@@ -134,9 +133,9 @@ export const isCommentCacheValid = async (repopath, issueNumber) => {
 
     const cacheTime = new Date(metadata.last_updated);
     const now = new Date();
-    const diffInHours = (now - cacheTime) / (1000 * 60 * 60);
+    const diffInHours = (now - cacheTime) / (100 * 60 * 60);
 
-    return diffInHours < 1; // 1小时内有效
+    return diffInHours < 1;
   } catch (error) {
     console.error('检查缓存有效性失败:', error);
     return false;

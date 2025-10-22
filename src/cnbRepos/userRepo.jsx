@@ -54,15 +54,20 @@ const UserRepo = ({ repoPath, initialBranchHash }) => {
       }
 
       const branchesData = await response.json();
-      setBranches(branchesData);
+      // 将API返回的对象格式转换为数组格式
+      const branchesArray = Object.keys(branchesData)
+        .filter(key => key !== '_cookies' && !isNaN(key))
+        .map(key => branchesData[key]);
+
+      setBranches(branchesArray);
 
       // 保存到缓存
-      await saveRepoBranches(repoPath, branchesData);
+      await saveRepoBranches(repoPath, branchesArray);
 
       // 自动选择默认分支或初始分支
-      let targetBranch = branchesData.find(b => b.is_head) || branchesData[0];
+      let targetBranch = branchesArray.find(b => b.is_head) || branchesArray[0];
       if (initialBranchHash) {
-        targetBranch = branchesData.find(b => b.target_hash === initialBranchHash) || targetBranch;
+        targetBranch = branchesArray.find(b => b.target_hash === initialBranchHash) || targetBranch;
       }
       if (targetBranch) {
         setSelectedBranch(targetBranch);
@@ -160,7 +165,7 @@ const UserRepo = ({ repoPath, initialBranchHash }) => {
   if (loading && !branches.length) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
         <span className="ml-2 text-gray-600">加载中...</span>
       </div>
     );
@@ -183,50 +188,50 @@ const UserRepo = ({ repoPath, initialBranchHash }) => {
       {selectedBranch && (
         <div>
           <div className="flex items-center mb-4">
-            <Code className="w-5 h-5 mr-2 text-gray-600" />
+            <Code className="w-5 h-5 mr-2 text-muted-foreground" />
             <h2 className="text-lg font-semibold">
               文件列表 ({files.length} 个项目)
             </h2>
             {loading && (
-              <Loader2 className="w-4 h-4 animate-spin text-gray-400 ml-2" />
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground ml-2" />
             )}
           </div>
 
           {files.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
               暂无文件
             </div>
           ) : (
             <div className="border rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-muted">
                   <tr>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">名称</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">最后提交</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">提交者</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">时间</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium">名称</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium">最后提交</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium">提交者</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium">时间</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-border">
                   {files.map((file) => (
-                    <tr key={file.path} className="hover:bg-gray-50">
+                    <tr key={file.path} className="hover:bg-muted/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center">
                           {file.entries ? (
-                            <Folder className="w-4 h-4 mr-2 text-blue-500" />
+                            <Folder className="w-4 h-4 mr-2 text-indigo-500" />
                           ) : (
-                            <File className="w-4 h-4 mr-2 text-gray-500" />
+                            <File className="w-4 h-4 mr-2 text-muted-foreground" />
                           )}
                           <span className="font-medium">{file.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
                         {file.last_commit?.commit?.message?.split('\n')[0] || '无提交信息'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
                         {file.last_commit?.author?.nickname || file.last_commit?.author?.username || file.last_commit?.author?.name || '未知'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
                         {formatCommitTime(file.last_commit?.commit?.author?.date)}
                       </td>
                     </tr>

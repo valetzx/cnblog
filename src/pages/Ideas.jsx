@@ -350,7 +350,7 @@ ${chunks}
     ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 text-gray-700 dark:text-gray-300 break-words" {...props} />,
     ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 text-gray-700 dark:text-gray-300 break-words" {...props} />,
     li: ({node, ...props}) => <li className="mb-1 text-gray-700 dark:text-gray-300 break-words" {...props} />,
-    a: ({node, ...props}) => <a className="text-blue-600 hover:underline dark:text-blue-400 break-all" {...props} />,
+    a: ({node, ...props}) => <a className="text-indigo-400 hover:underline dark:text-blue-400 break-all" {...props} />,
     code: ({node, ...props}) => <code className="bg-gray-100 px-1 py-0.5 rounded text-sm dark:bg-slate-700 dark:text-gray-100 break-all" {...props} />,
     pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded-lg overflow-x-auto my-3 dark:bg-slate-700 dark:text-gray-100" {...props} />,
     blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-3 dark:border-slate-600 dark:text-gray-300 break-words" {...props} />,
@@ -391,7 +391,7 @@ ${chunks}
                         <div
                           className={`inline-block px-4 py-2 rounded-2xl ${
                             message.sender === 'user'
-                              ? 'bg-blue-500 text-white rounded-tr-none'
+                              ? 'bg-indigo-500 text-white rounded-tr-none'
                               : 'bg-gray-200 text-gray-800 dark:bg-slate-700 dark:text-gray-100 rounded-tl-none'
                           } ${message.isStreaming ? 'animate-pulse' : ''} break-words`}
                         >
@@ -460,8 +460,8 @@ ${chunks}
                   size="sm"
                   className={`px-3 py-2 rounded-md transition-all duration-200 ${
                     useKnowledgeRepo 
-                      ? 'bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
-                      : 'border border-blue-500 text-blue-500 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-slate-800'
+                      ? 'bg-indigo-500 text-white hover:bg-indigo-400 dark:bg-indigo-400 dark:hover:bg-blue-700'
+                      : 'border border-indigo-500 text-indigo-500 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-slate-800'
                   }`}
                   onClick={() => setUseKnowledgeRepo(!useKnowledgeRepo)}
                 >
@@ -486,8 +486,8 @@ ${chunks}
                   variant={useKnowledgeRepo ? "default" : "outline"}
                   className={`flex items-center space-x-1 px-3 py-2 rounded-md transition-all duration-200 ${
                     useKnowledgeRepo 
-                      ? 'bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
-                      : 'border border-blue-500 text-blue-500 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-slate-800'
+                      ? 'bg-indigo-500 text-white hover:bg-indigo-400 dark:bg-indigo-400 dark:hover:bg-blue-700'
+                      : 'border border-indigo-500 text-indigo-500 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-slate-800'
                   }`}
                   onClick={() => setUseKnowledgeRepo(!useKnowledgeRepo)}
                 >

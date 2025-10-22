@@ -275,10 +275,10 @@ const Commit = () => {
               {card.images && card.images.length > 0 && (
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   {card.images.slice(0, 4).map((img, imgIndex) => (
-                    <img 
-                      key={imgIndex} 
-                      src={img} 
-                      alt={`评论图片 ${imgIndex + 1}`} 
+                    <img
+                      key={imgIndex}
+                      src={img}
+                      alt={`评论图片 ${imgIndex + 1}`}
                       className="rounded-md object-cover w-full h-24 cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={() => handleImageClick(card.images, imgIndex)}
                     />

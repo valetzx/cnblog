@@ -16,7 +16,7 @@ const ProgressToast = ({ id, duration = 4000, status = 'default', children, acti
       case 'warning':
         return 'bg-yellow-500/30 border-yellow-500/30'
       case 'info':
-        return 'bg-blue-500/30 border-blue-500/30'
+        return 'bg-indigo-500/30 border-indigo-500/30'
       case 'loading':
         return 'bg-gray-500/30 border-gray-500/30'
       default:
@@ -43,7 +43,7 @@ const ProgressToast = ({ id, duration = 4000, status = 'default', children, acti
       </div>
 
       {/* 内容区域 */}
-      <div className="relative bg-background rounded-md p-4">
+      <div className="relative bg-background rounded-md p-4 select-none">
         {children}
         {(action || cancel) && (
           <div className="flex gap-2 mt-3 justify-end">
@@ -58,7 +58,7 @@ const ProgressToast = ({ id, duration = 4000, status = 'default', children, acti
             {action && (
               <button
                 onClick={action.onClick}
-                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                className="px-3 py-1 text-sm bg-indigo-500 text-white rounded hover:bg-indigo-400 transition-colors"
               >
                 {action.label}
               </button>
@@ -150,7 +150,7 @@ const Toaster = ({
       toastOptions={{
         classNames: {
           toast:
-            "group toast group-[.toaster]:bg-transparent group-[.toaster]:shadow-lg p-0",
+            "group toast group-[.toaster]:bg-transparent p-0 absolute right-0",
           description: "group-[.toast]:text-muted-foreground",
           actionButton:
             "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",

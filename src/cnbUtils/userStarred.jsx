@@ -155,6 +155,7 @@ export const formatReposForDisplay = (repos) => {
     forkCount: repo.fork_count || 0,
     openIssueCount: repo.open_issue_count || 0,
     languages: repo.languages || {},
+    languageColor: (repo.languages?.color || repo.language_color || ''),
     lastUpdatedAt: repo.last_updated_at || repo.updated_at,
     starTime: repo.star_time,
     pinned: repo.pinned || false,

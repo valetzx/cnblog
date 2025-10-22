@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,11 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Code, AlertCircle, Search, X, GitBranch, Tag, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import UserRepo from '@/cnbRepos/userRepo';
-import { getRepoBranchesFromCache, getCacheMetadata } from '@/cnbRepos/indexedDB';
-import RepoIssues from '@/cnbRepos/repoIssues'; // 导入新的RepoIssues组件
+import { getRepoBranchesFromCache, getCacheMetadata, saveRepoBranches } from '@/cnbRepos/indexedDB';
+import RepoIssues from '@/cnbRepos/repoIssues';
+import { toast } from '@/components/ui/sonner';
 
 const Repo = () => {
   const params = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const repopath = params['*'] || ''; // 使用通配符 * 获取完整路径
   const [selectedTag, setSelectedTag] = useState('coderepo');
   const [searchKey, setSearchKey] = useState('');
@@ -20,6 +23,7 @@ const Repo = () => {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(false); // 添加工作空间加载状态
   const searchInputRef = useRef(null);
 
   // 标签定义
@@ -27,6 +31,20 @@ const Repo = () => {
     { id: 'coderepo', label: '代码', icon: <Code size={16} /> },
     { id: 'codeissue', label: 'ISSUE', icon: <AlertCircle size={16} /> },
   ];
+
+  // 解析查询参数
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tagParam = searchParams.get('tag');
+
+    if (tagParam) {
+      // 检查标签是否存在
+      const tagExists = tags.some(tag => tag.id === tagParam);
+      if (tagExists) {
+        setSelectedTag(tagParam);
+      }
+    }
+  }, [location.search]);
 
   // 获取仓库分支
   const fetchBranches = async () => {
@@ -69,10 +87,18 @@ const Repo = () => {
       }
 
       const branchesData = await response.json();
-      setBranches(branchesData);
+      // 将API返回的对象格式转换为数组格式
+      const branchesArray = Object.keys(branchesData)
+        .filter(key => key !== '_cookies' && !isNaN(key))
+        .map(key => branchesData[key]);
+
+      setBranches(branchesArray);
+
+      // 保存到缓存
+      await saveRepoBranches(repopath, branchesArray);
 
       // 自动选择默认分支
-      const defaultBranch = branchesData.find(b => b.is_head) || branchesData[0];
+      const defaultBranch = branchesArray.find(b => b.is_head) || branchesArray[0];
       if (defaultBranch) {
         setSelectedBranch(defaultBranch);
       }
@@ -102,7 +128,22 @@ const Repo = () => {
 
   // 处理标签点击
   const handleTagClick = (tagId) => {
-    setSelectedTag(tagId);
+    const newSelectedTag = tagId === selectedTag ? 'coderepo' : tagId;
+    setSelectedTag(newSelectedTag);
+
+    // 更新URL查询参数
+    const searchParams = new URLSearchParams(location.search);
+    if (newSelectedTag === 'coderepo') {
+      searchParams.delete('tag');
+    } else {
+      searchParams.set('tag', newSelectedTag);
+    }
+
+    const newSearch = searchParams.toString();
+    navigate({
+      pathname: location.pathname,
+      search: newSearch ? `?${newSearch}` : ''
+    }, { replace: true });
   };
 
   // 处理分支选择
@@ -125,10 +166,66 @@ const Repo = () => {
     return branchRef.replace('refs/heads/', '');
   };
 
+  // 处理云原生开发按钮点击
+  const handleCloudNativeDev = async () => {
+    if (!selectedBranch) {
+      toast.error('请先选择分支');
+      return;
+    }
+
+    setWorkspaceLoading(true);
+
+    try {
+      const session = localStorage.getItem('CNBSESSION'); // 获取session
+      const branchName = getBranchDisplayName(selectedBranch.ref);
+
+      const response = await fetch(`${import.meta.env.VITE_CNBCOOKIE_API_URL}/${repopath}/-/workspace/start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+          'Content-Type': 'application/json',
+          'session': session || ''
+        },
+        body: JSON.stringify({
+          ref: selectedBranch.ref,
+          branch: branchName,
+          language: 'zh-CN'
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        // 处理错误情况
+        if (result.errcode === 16) {
+          toast.error('由于用户未登录，该任务将不会运行。');
+        } else if (result.errcode === 403) {
+          toast.warning('当前用户没有权限，请尝试fork后启动');
+        } else {
+          toast.error(result.errmsg || '启动云原生开发失败');
+        }
+        return;
+      }
+
+      // 成功情况
+      if (result.url) {
+        // 在url末尾添加&webIDE=false
+        const workspaceUrl = result.url + '&webIDE=false';
+        window.open(workspaceUrl, '_blank');
+        toast.success('云原生开发环境启动成功');
+      }
+    } catch (err) {
+      console.error('启动云原生开发失败:', err);
+      toast.error('启动云原生开发失败，请稍后重试');
+    } finally {
+      setWorkspaceLoading(false);
+    }
+  };
+
   if (loading && !branches.length) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
         <span className="ml-2 text-gray-600">加载分支信息中...</span>
       </div>
     );
@@ -194,7 +291,7 @@ const Repo = () => {
                 className={cn(
                   "px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors flex items-center gap-1",
                   selectedTag === tag.id
-                    ? "bg-blue-500 text-white"
+                    ? "bg-indigo-500 text-white"
                     : "bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
                 )}
               >
@@ -211,12 +308,12 @@ const Repo = () => {
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="flex-1">
                 <h1 className="text-xl sm:text-2xl font-bold">{repopath}</h1>
-                <p className="text-gray-600 dark:text-gray-400">仓库路径</p>
+                <p className="text-muted-foreground dark:text-gray-400">仓库路径</p>
 
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   {/* 分支选择器 */}
                   <div className="flex items-center gap-2">
-                    <GitBranch size={16} className="text-gray-500" />
+                    <GitBranch size={16} className="text-muted-foreground" />
                     <Select
                       value={selectedBranch ? getBranchDisplayName(selectedBranch.ref) : ''}
                       onValueChange={handleBranchChange}
@@ -266,8 +363,17 @@ const Repo = () => {
                     <Button
                       className="h-6 text-xs px-2"
                       style={{ backgroundColor: '#EB5A00', color: 'white' }}
+                      onClick={handleCloudNativeDev}
+                      disabled={workspaceLoading}
                     >
-                      云原生开发
+                      {workspaceLoading ? (
+                        <>
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          启动中...
+                        </>
+                      ) : (
+                        '云原生开发'
+                      )}
                     </Button>
                   </div>
                 </div>

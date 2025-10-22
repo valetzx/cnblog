@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,10 +21,12 @@ import { getUserGroups, formatGroupsForDisplay, getAccessRoleLabel, formatNumber
 import { getUserRepos, formatReposForDisplay as formatUserReposForDisplay, getPrimaryLanguage as getRepoPrimaryLanguage } from '@/cnbUtils/userRepos';
 import { getUserOrganizations, formatOrganizationsForDisplay as formatUserOrganizationsForDisplay } from '@/cnbUtils/userOrganization';
 import { getUserMissions, formatMissionsForDisplay } from '@/cnbUtils/userMission.jsx';
+import { getAllSchema } from '@/cnbRepos/allSchema';
 
 const User = () => {
   const { username } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState('all');
@@ -81,6 +83,16 @@ const User = () => {
   const [userRepos, setUserRepos] = useState([]);
   const [userReposLoading, setUserReposLoading] = useState(false);
   const [userReposError, setUserReposError] = useState(null);
+
+  // allSchema 弹窗相关状态
+  const [allSchemaData, setAllSchemaData] = useState(null);
+  const [allSchemaLoading, setAllSchemaLoading] = useState(false);
+  const [allSchemaError, setAllSchemaError] = useState(null);
+  const [allSchemaDialogOpen, setAllSchemaDialogOpen] = useState(false);
+  const [selectedWorkspace, setSelectedWorkspace] = useState(null);
+
+  // 端口号状态
+  const [portNumber, setPortNumber] = useState(3000);
 
   // UserSettings 对话框状态
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -198,10 +210,25 @@ const User = () => {
     }, 100);
   };
 
-  // 处理标签点击
-  const handleTagClick = async (tagId) => {
-    setSelectedTag(tagId === selectedTag ? 'all' : tagId);
+  // 解析查询参数
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tagParam = searchParams.get('tag');
 
+    if (tagParam) {
+      // 检查标签是否存在
+      const tagExists = tags.some(tag => tag.id === tagParam);
+      if (tagExists) {
+        setSelectedTag(tagParam);
+
+        // 根据tag参数触发相应的数据加载
+        handleTagDataLoading(tagParam);
+      }
+    }
+  }, [location.search]); // 移除tags依赖，只依赖location.search
+
+  // 处理标签数据加载
+  const handleTagDataLoading = async (tagId) => {
     // 如果我创建的标签被点击，发起请求
     if (tagId === 'created') {
       setCreatedLoading(true);
@@ -379,6 +406,32 @@ const User = () => {
     }
   };
 
+  // 处理标签点击
+  const handleTagClick = async (tagId) => {
+    const newSelectedTag = tagId === selectedTag ? 'all' : tagId;
+    setSelectedTag(newSelectedTag);
+
+    // 更新URL查询参数
+    const searchParams = new URLSearchParams(location.search);
+    if (newSelectedTag === 'all') {
+      searchParams.delete('tag');
+    } else {
+      searchParams.set('tag', newSelectedTag);
+    }
+
+    const newSearch = searchParams.toString();
+    navigate({
+      pathname: location.pathname,
+      search: newSearch ? `?${newSearch}` : ''
+    }, { replace: true });
+
+    // 如果选择了具体标签（不是'all'），则触发数据加载
+    if (newSelectedTag !== 'all') {
+      handleTagDataLoading(newSelectedTag);
+    }
+  };
+
+
   // 格式化日期
   const formatDate = (dateString) => {
     if (!dateString) return '未知';
@@ -460,7 +513,7 @@ const User = () => {
                 className={cn(
                   "px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors flex items-center gap-1",
                   selectedTag === tag.id
-                    ? "bg-blue-500 text-white"
+                    ? "bg-indigo-500 text-white"
                     : "bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
                 )}
               >
@@ -504,7 +557,7 @@ const User = () => {
                   </Badge>
                 </div>
 
-                <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
+                <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500 dark:text-gray-400">
                   {userInfo.location && (
                     <span className="flex items-center gap-1">
                       <MapPin size={12} />
@@ -547,8 +600,8 @@ const User = () => {
         {selectedTag === 'created' && (
           <div className="mt-6">
             {createdError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                <p className="text-red-700">加载失败: {createdError}</p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载失败: {createdError}</p>
                 <Button
                   variant="outline"
                   className="mt-2"
@@ -566,11 +619,16 @@ const User = () => {
                     <Card className="w-full transition-shadow flex flex-col">
                       <CardContent className="p-4 flex flex-col h-full">
                         <h3 className="font-semibold text-base sm:text-lg line-clamp-2 mb-2">
-                          {issue.title}
+                          <button
+                            onClick={() => navigate(`/info/${issue.number}/${issue.slug}`)}
+                            className="text-left hover:text-indigo-400 transition-colors"
+                          >
+                            {issue.title}
+                          </button>
                         </h3>
                         <div className="text-sm text-gray-600 space-y-1 flex-grow">
-                          <p className="text-xs text-gray-500">{issue.slug} #{issue.number}</p>
-                          <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{issue.slug} #{issue.number}</p>
+                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
                             <span>创建者: {issue.creator}</span>
                             <span>{formatDisplayDate(issue.createdTime)}</span>
                           </div>
@@ -600,7 +658,7 @@ const User = () => {
             )}
 
             {!createdLoading && !createdError && createdIssues.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <PlusSquare size={48} className="mx-auto mb-4 opacity-50" />
                 <p>暂无创建的内容</p>
               </div>
@@ -612,8 +670,8 @@ const User = () => {
         {selectedTag === 'userfollowing' && (
           <div className="mt-6">
             {starredError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                <p className="text-red-700">加载失败: {starredError}</p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载失败: {starredError}</p>
                 <Button
                   variant="outline"
                   className="mt-2"
@@ -646,11 +704,11 @@ const User = () => {
                           )}
                         </div>
 
-                        <p className="text-sm text-gray-600 line-clamp-3 mb-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-3">
                           {repo.description}
                         </p>
 
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-3">
                           <span className="flex items-center">
                             <span
                               className="w-3 h-3 rounded-full mr-1"
@@ -662,7 +720,7 @@ const User = () => {
                         </div>
 
                         <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center space-x-4 text-gray-500">
+                          <div className="flex items-center space-x-4 text-gray-500 dark:text-gray-400">
                             <span className="flex items-center">
                               <Star size={12} className="mr-1" />
                               {repo.starCount}
@@ -689,7 +747,7 @@ const User = () => {
             )}
 
             {!starredLoading && !starredError && starredRepos.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Heart size={48} className="mx-auto mb-4 opacity-50" />
                 <p>暂无关注的仓库</p>
               </div>
@@ -701,8 +759,8 @@ const User = () => {
         {selectedTag === 'todo' && (
           <div className="mt-6">
             {todoError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                <p className="text-red-700">加载失败: {todoError}</p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载失败: {todoError}</p>
                 <Button
                   variant="outline"
                   className="mt-2"
@@ -720,11 +778,16 @@ const User = () => {
                     <Card className="w-full hover:shadow-md transition-shadow flex flex-col">
                       <CardContent className="p-4 flex flex-col h-full">
                         <h3 className="font-semibold text-base sm:text-lg line-clamp-2 mb-2">
-                          {issue.title}
+                          <button
+                            onClick={() => navigate(`/info/${issue.number}/${issue.slug}`)}
+                            className="text-left hover:indigo-400 transition-colors"
+                          >
+                            {issue.title}
+                          </button>
                         </h3>
                         <div className="text-sm text-gray-600 space-y-1 flex-grow">
-                          <p className="text-xs text-gray-500">{issue.slug} #{issue.number}</p>
-                          <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{issue.slug} #{issue.number}</p>
+                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
                             <span>创建者: {issue.creator}</span>
                             <span>{formatDisplayDate(issue.createdTime)}</span>
                           </div>
@@ -754,7 +817,7 @@ const User = () => {
             )}
 
             {!todoLoading && !todoError && todoIssues.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <CheckSquare size={48} className="mx-auto mb-4 opacity-50" />
                 <p>暂无待办事项</p>
               </div>
@@ -766,8 +829,8 @@ const User = () => {
         {selectedTag === 'activity' && (
           <div className="mt-6">
             {activityError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                <p className="text-red-700">加载失败: {activityError}</p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载失败: {activityError}</p>
                 <Button
                   variant="outline"
                   className="mt-2"
@@ -792,7 +855,7 @@ const User = () => {
                           </Avatar>
                           <div className="flex-1">
                             <p className="text-sm font-medium">{activity.user?.nickname}</p>
-                            <p className="text-xs text-gray-500">@{activity.user?.username}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">@{activity.user?.username}</p>
                           </div>
                         </div>
 
@@ -807,13 +870,13 @@ const User = () => {
                               <h3 className="font-semibold text-base line-clamp-2">
                                 <button
                                   onClick={() => navigate(`/repo/${activity.repo.path}`)}
-                                  className="hover:text-blue-600 transition-colors"
+                                  className="hover:text-indigo-400 transition-colors"
                                 >
                                   {activity.repo.name}
                                 </button>
                               </h3>
                               {activity.repo.description && (
-                                <p className="text-sm text-gray-600 line-clamp-3 mt-1">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mt-1">
                                   {activity.repo.description}
                                 </p>
                               )}
@@ -823,20 +886,23 @@ const User = () => {
                           {activity.release && (
                             <div>
                               <h4 className="font-medium text-sm">发布: {activity.release.title}</h4>
-                              <p className="text-xs text-gray-500">标签: {activity.release.tag}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">标签: {activity.release.tag}</p>
                             </div>
                           )}
                         </div>
 
                         {/* 元信息 */}
-                        <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                           <span>{formatDisplayDate(activity.createdAt)}</span>
 
                           {activity.repo && (
                             <div className="flex items-center space-x-2">
                               {getPrimaryLanguage(activity.repo.languages) && (
                                 <span className="flex items-center">
-                                  <span className="w-2 h-2 rounded-full bg-blue-500 mr-1"></span>
+                                  <span
+                                    className="w-2 h-2 rounded-full mr-1"
+                                    style={{ backgroundColor: activity.repo.languageColor || '#3b82f6' }}
+                                  ></span>
                                   {getPrimaryLanguage(activity.repo.languages)}
                                 </span>
                               )}
@@ -856,7 +922,7 @@ const User = () => {
             )}
 
             {!activityLoading && !activityError && activities.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Activity size={48} className="mx-auto mb-4 opacity-50" />
                 <p>暂无用户动态</p>
               </div>
@@ -868,8 +934,8 @@ const User = () => {
         {selectedTag === 'cloud' && (
           <div className="mt-6">
             {workspaceError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                <p className="text-red-700">加载失败: {workspaceError}</p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载失败: {workspaceError}</p>
                 <Button
                   variant="outline"
                   className="mt-2"
@@ -884,6 +950,7 @@ const User = () => {
               <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 sm:gap-4 space-y-4">
                 {workspaces.map((workspace) => {
                   const statusInfo = getStatusInfo(workspace.status);
+                  const isClosed = workspace.status === 'closed';
                   return (
                     <div key={workspace.id} className="break-inside-avoid">
                       <Card className="w-full transition-shadow flex flex-col">
@@ -904,18 +971,18 @@ const User = () => {
                             </Badge>
                           </div>
 
-                          <div className="text-sm text-gray-600 space-y-2 mb-3">
+                          <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2 mb-3">
                             <div className="flex items-center justify-between text-xs">
                               <span>分支: {workspace.branch}</span>
                               <span>SN: {workspace.sn}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs">
                               <span>创建: {formatDisplayDate(workspace.createTime)}</span>
-                              <span>运行: {formatDuration(workspace.duration)}</span>
+                              {!isClosed && <span>运行: {formatDuration(workspace.duration)}</span>}
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                             <div className="flex items-center space-x-3">
                               <span className="flex items-center">
                                 <File size={12} className="mr-1" />
@@ -923,20 +990,67 @@ const User = () => {
                               </span>
                               <span className="flex items-center">
                                 <Archive size={12} className="mr-1" />
-                                {workspace.stashCount} 暂存
+                                {workspace.stashCount} 备份
                               </span>
                             </div>
-                            {workspace.ssh && (
+                            {!isClosed && workspace.ssh && (
                               <div className="flex items-center space-x-2">
                                 <Badge
                                   variant="outline"
                                   className="text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600"
-                                  onClick={() => window.open(`https://cnb.cool/${workspace.slug}/-/build/console/${workspace.id}`, '_blank')}
+                                  onClick={() => window.open(`https://${workspace.id}.cnb.space/?folder=/workspace`, '_blank')}
                                 >
-                                  SSH
+                                  WebIDE
                                 </Badge>
-                                <Badge variant="outline" className="text-xs">
-                                  vsocde
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600"
+                                  onClick={async () => {
+                                    setSelectedWorkspace(workspace);
+                                    setAllSchemaDialogOpen(true);
+                                    setAllSchemaLoading(true);
+                                    setAllSchemaError(null);
+
+                                    try {
+                                      const data = await getAllSchema(workspace, workspace.pipelineId);
+                                      setAllSchemaData(data);
+                                    } catch (error) {
+                                      console.error('Error fetching all schema:', error);
+                                      setAllSchemaError(error.message);
+                                    } finally {
+                                      setAllSchemaLoading(false);
+                                    }
+                                  }}
+                                >
+                                  更多
+                                </Badge>
+                              </div>
+                            )}
+                            {isClosed && (
+                              <div className="flex items-center space-x-2">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs cursor-pointer hover:bg-green-100 dark:hover:bg-green-600"
+                                  onClick={() => {
+                                    // 重建工作空间逻辑
+                                    console.log('重建工作空间:', workspace.id);
+                                    alert('重建功能待实现');
+                                  }}
+                                >
+                                  重建
+                                </Badge>
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs cursor-pointer hover:bg-red-100 dark:hover:bg-red-600"
+                                  onClick={() => {
+                                    // 删除工作空间逻辑
+                                    console.log('删除工作空间:', workspace.id);
+                                    if (confirm('确定要删除这个工作空间吗？此操作不可恢复。')) {
+                                      alert('删除功能待实现');
+                                    }
+                                  }}
+                                >
+                                  删除
                                 </Badge>
                               </div>
                             )}
@@ -950,7 +1064,7 @@ const User = () => {
             )}
 
             {!workspaceLoading && !workspaceError && workspaces.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Cloud size={48} className="mx-auto mb-4 opacity-50" />
                 <p>暂无云原生开发工作空间</p>
               </div>
@@ -962,8 +1076,8 @@ const User = () => {
         {selectedTag === 'mission' && (
           <div className="mt-6">
             {userMissionError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                <p className="text-red-700">加载失败: {userMissionError}</p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载失败: {userMissionError}</p>
                 <Button
                   variant="outline"
                   className="mt-2"
@@ -982,14 +1096,12 @@ const User = () => {
                       <CardContent className="p-4 flex flex-col">
                         <div className="flex items-start justify-between mb-2">
                           <h3 className="font-semibold text-base line-clamp-2 flex-1">
-                            <a
-                              href={`https://cnb.cool/${mission.path}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="transition-colors"
+                            <button
+                              onClick={() => navigate(`/mission/${mission.path}`)}
+                              className="transition-colors text-left"
                             >
                               {mission.name}
-                            </a>
+                            </button>
                           </h3>
                           {mission.pinned && (
                             <Badge variant="secondary" className="ml-2 text-xs">
@@ -1002,16 +1114,16 @@ const User = () => {
                           {mission.description}
                         </p>
 
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-3">
                           <span className="flex items-center">
-                            <span className="w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
+                            <span className="w-3 h-3 rounded-full bg-indigo-500 mr-1"></span>
                             {getVisibilityLabel(mission.visibilityLevel)}
                           </span>
                           <span>{formatDisplayDate(mission.createdAt)} 创建</span>
                         </div>
 
                         <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center space-x-4 text-gray-500">
+                          <div className="flex items-center space-x-4 text-gray-500 dark:text-gray-400">
                             <span className="flex items-center">
                               <Star size={12} className="mr-1" />
                               {mission.stared ? '已关注' : '未关注'}
@@ -1034,7 +1146,7 @@ const User = () => {
             )}
 
             {!userMissionLoading && !userMissionError && userMissions.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <BookOpen size={48} className="mx-auto mb-4 opacity-50" />
                 <p>暂无任务集</p>
               </div>
@@ -1046,8 +1158,8 @@ const User = () => {
         {selectedTag === 'usertasks' && (
           <div className="mt-6">
             {myTasksError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                <p className="text-red-700">加载失败: {myTasksError}</p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载失败: {myTasksError}</p>
                 <Button
                   variant="outline"
                   className="mt-2"
@@ -1066,14 +1178,12 @@ const User = () => {
                       <CardContent className="p-4 flex flex-col">
                         <div className="flex items-start justify-between mb-2">
                           <h3 className="font-semibold text-base line-clamp-2 flex-1">
-                            <a
-                              href={`https://cnb.cool/${mission.path}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="transition-colors"
+                            <button
+                              onClick={() => navigate(`/mission/${mission.path}`)}
+                              className="transition-colors text-left"
                             >
                               {mission.name}
-                            </a>
+                            </button>
                           </h3>
                           {mission.pinned && (
                             <Badge variant="secondary" className="ml-2 text-xs">
@@ -1086,16 +1196,16 @@ const User = () => {
                           {mission.description}
                         </p>
 
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-3">
                           <span className="flex items-center">
-                            <span className="w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
+                            <span className="w-3 h-3 rounded-full bg-indigo-500 mr-1"></span>
                             {getVisibilityLabel(mission.visibilityLevel)}
                           </span>
                           <span>{formatDisplayDate(mission.createdAt)} 创建</span>
                         </div>
 
                         <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center space-x-4 text-gray-500">
+                          <div className="flex items-center space-x-4 text-gray-500 dark:text-gray-400">
                             <span className="flex items-center">
                               <Star size={12} className="mr-1" />
                               {mission.stared ? '已关注' : '未关注'}
@@ -1118,7 +1228,7 @@ const User = () => {
             )}
 
             {!myTasksLoading && !myTasksError && myTasks.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <BookOpen size={48} className="mx-auto mb-4 opacity-50" />
                 <p>暂无任务集</p>
               </div>
@@ -1130,8 +1240,8 @@ const User = () => {
         {selectedTag === 'usergroups' && (
           <div className="mt-6">
             {groupError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                <p className="text-red-700">加载失败: {groupError}</p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载失败: {groupError}</p>
                 <Button
                   variant="outline"
                   className="mt-2"
@@ -1166,20 +1276,20 @@ const User = () => {
                           )}
                         </div>
 
-                        <p className="text-sm text-gray-600 line-clamp-3 mb-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-3">
                           {group.description}
                         </p>
 
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-3">
                           <span className="flex items-center">
-                            <span className="w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
+                            <span className="w-3 h-3 rounded-full bg-indigo-500 mr-1"></span>
                             {getAccessRoleLabel(group.accessRole)}
                           </span>
                           <span>{formatDisplayDate(group.createdAt)} 创建</span>
                         </div>
 
                         <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center space-x-4 text-gray-500">
+                          <div className="flex items-center space-x-4 text-gray-500 dark:text-gray-400">
                             <span className="flex items-center">
                               <Star size={12} className="mr-1" />
                               {group.stared ? '已关注' : '未关注'}
@@ -1202,7 +1312,7 @@ const User = () => {
             )}
 
             {!groupLoading && !groupError && groups.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Users size={48} className="mx-auto mb-4 opacity-50" />
                 <p>暂无组织</p>
               </div>
@@ -1214,8 +1324,8 @@ const User = () => {
         {selectedTag === 'code' && (
           <div className="mt-6">
             {userReposError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                <p className="text-red-700">加载失败: {userReposError}</p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载失败: {userReposError}</p>
                 <Button
                   variant="outline"
                   className="mt-2"
@@ -1248,11 +1358,11 @@ const User = () => {
                           )}
                         </div>
 
-                        <p className="text-sm text-gray-600 line-clamp-3 mb-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-3">
                           {repo.description}
                         </p>
 
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-3">
                           <span className="flex items-center">
                             <span
                               className="w-3 h-3 rounded-full mr-1"
@@ -1264,7 +1374,7 @@ const User = () => {
                         </div>
 
                         <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center space-x-4 text-gray-500">
+                          <div className="flex items-center space-x-4 text-gray-500 dark:text-gray-400">
                             <span className="flex items-center">
                               <Star size={12} className="mr-1" />
                               {repo.starCount}
@@ -1291,7 +1401,7 @@ const User = () => {
             )}
 
             {!userReposLoading && !userReposError && userRepos.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <GitBranch size={48} className="mx-auto mb-4 opacity-50" />
                 <p>暂无仓库</p>
               </div>
@@ -1303,8 +1413,8 @@ const User = () => {
         {selectedTag === 'organization' && (
           <div className="mt-6">
             {userOrganizationsError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                <p className="text-red-700">加载失败: {userOrganizationsError}</p>
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载失败: {userOrganizationsError}</p>
                 <Button
                   variant="outline"
                   className="mt-2"
@@ -1339,18 +1449,18 @@ const User = () => {
                           )}
                         </div>
 
-                        <p className="text-sm text-gray-600 line-clamp-3 mb-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-3">
                           {organization.description}
                         </p>
 
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-3">
                           <span className="flex items-center">
                             {getAccessRoleLabel(organization.accessRole)}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center space-x-4 text-gray-500">
+                          <div className="flex items-center space-x-4 text-gray-500 dark:text-gray-400">
                             <span className="flex items-center">
                               <Star size={12} className="mr-1" />
                               {organization.stared ? '已关注' : '未关注'}
@@ -1361,7 +1471,7 @@ const User = () => {
                             </span>
                           </div>
 
-                          <div className="flex items-center space-x-4 text-gray-500">
+                          <div className="flex items-center space-x-4 text-gray-500 dark:text-gray-400">
                             <span>{formatDisplayDate(organization.createdAt)} 创建</span>
                           </div>
                         </div>
@@ -1373,7 +1483,7 @@ const User = () => {
             )}
 
             {!userOrganizationsLoading && !userOrganizationsError && userOrganizations.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Users size={48} className="mx-auto mb-4 opacity-50" />
                 <p>暂无组织</p>
               </div>
@@ -1390,6 +1500,223 @@ const User = () => {
           </DialogHeader>
           <div className="p-6 pt-4">
             <UserSettings onClose={() => setSettingsOpen(false)} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* allSchema 弹窗 */}
+      <Dialog open={allSchemaDialogOpen} onOpenChange={setAllSchemaDialogOpen}>
+        <DialogContent className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 max-w-2xl max-h-[90vh] overflow-y-auto w-[90vw] sm:w-auto sm:min-w-[600px] rounded-lg [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle>
+              {selectedWorkspace ? `连接选项 - ${selectedWorkspace.slug}` : '连接选项'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 pt-4">
+            {allSchemaLoading && (
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400">加载中...</p>
+              </div>
+            )}
+
+            {allSchemaError && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载失败: {allSchemaError}</p>
+              </div>
+            )}
+
+            {!allSchemaLoading && !allSchemaError && allSchemaData && (
+              <div className="space-y-4">
+                {/* Remote SSH - 布满横向 */}
+                {allSchemaData.remoteSsh && (
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-semibold text-sm mb-2">Remote SSH</h3>
+                    <div className="flex items-center justify-between">
+                      <code className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded flex-1 mr-2 overflow-x-auto ">
+                        {allSchemaData.remoteSsh}
+                      </code>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigator.clipboard.writeText(allSchemaData.remoteSsh)}
+                      >
+                        复制
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 其他连接选项 - 两两并排 */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* CodeBuddy */}
+                  {allSchemaData.codebuddy && (
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-sm mb-2">CodeBuddy</h3>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 flex-1 mr-2">
+                          使用 CodeBuddy 客户端打开
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(allSchemaData.codebuddy, '_blank')}
+                        >
+                          打开
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CodeBuddy CN */}
+                  {allSchemaData.codebuddycn && (
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-sm mb-2">CodeBuddy CN</h3>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 flex-1 mr-2">
+                          使用 CodeBuddy 国内版打开
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(allSchemaData.codebuddycn, '_blank')}
+                        >
+                          打开
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* VS Code */}
+                  {allSchemaData.vscode && (
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-sm mb-2">VS Code</h3>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 flex-1 mr-2">
+                          使用 VSCode 打开
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(allSchemaData.vscode, '_blank')}
+                        >
+                          打开
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* VS Code Insiders */}
+                  {allSchemaData['vscode-insiders'] && (
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-sm mb-2">VS Code Insiders</h3>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 flex-1 mr-2">
+                          使用 VSCode 预览版打开
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(allSchemaData['vscode-insiders'], '_blank')}
+                        >
+                          打开
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cursor */}
+                  {allSchemaData.cursor && (
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-sm mb-2">Cursor</h3>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 flex-1 mr-2">
+                          使用 Cursor IDE 打开
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(allSchemaData.cursor, '_blank')}
+                        >
+                          打开
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SSH Command */}
+                  {allSchemaData.ssh && (
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-sm mb-2">SSH 命令</h3>
+                      <div className="flex items-center justify-between">
+                        <code className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded flex-1 mr-2 overflow-x-auto whitespace-nowrap">
+                          {allSchemaData.ssh}
+                        </code>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigator.clipboard.writeText(allSchemaData.ssh)}
+                        >
+                          复制
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Console */}
+                  {selectedWorkspace && selectedWorkspace.slug && (
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-sm mb-2">webConsole</h3>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 flex-1 mr-2">
+                          使用 Console 打开
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(`https://cnb.cool/${selectedWorkspace.slug}/-/build/console/${selectedWorkspace.id}`, '_blank')}
+                        >
+                          打开
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Port */}
+                  {selectedWorkspace && selectedWorkspace.slug && (
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-sm mb-2">Port</h3>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 flex-1 mr-2">
+                          打开指定端口
+                        </span>
+                        <input
+                          type="number"
+                          value={portNumber}
+                          onChange={(e) => setPortNumber(Number(e.target.value))}
+                          className="w-20 px-2 py-1.5 text-xs border rounded mr-2 h-9"
+                          min="1"
+                          max="65535"
+                          placeholder="端口号"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(`https://${selectedWorkspace.id}.cnb.space/proxy/${portNumber}`, '_blank')}
+                        >
+                          打开
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!allSchemaLoading && !allSchemaError && !allSchemaData && (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <p>暂无连接选项</p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

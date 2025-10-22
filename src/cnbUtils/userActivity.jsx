@@ -188,6 +188,7 @@ export const formatActivitiesForDisplay = (activities) => {
       path: activity.repo.path,
       webUrl: activity.repo.site || `https://cnb.cool/${activity.repo.path}`,
       languages: activity.repo.languages || {},
+      languageColor: (activity.repo.languages?.color || activity.repo.language_color || ''),
       visibility: activity.repo.visibility_level || 'Public'
     } : null,
     release: activity.release ? {

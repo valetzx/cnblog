@@ -171,7 +171,7 @@ const TagFilter = ({ tags, selectedTag, onTagChange, onSearchResults }) => {
             <button
               type="submit"
               disabled={isSearching}
-              className="ml-2 px-3 py-1.5 text-sm rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
+              className="ml-2 px-3 py-1.5 text-sm rounded-full bg-indigo-500 text-white hover:bg-indigo-400 transition-colors disabled:opacity-50"
             >
               {isSearching ? '搜索中...' : '搜索'}
             </button>
@@ -196,7 +196,7 @@ const TagFilter = ({ tags, selectedTag, onTagChange, onSearchResults }) => {
             className={cn(
               "px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors",
               selectedTag === tag
-                ? "bg-blue-500 text-white"
+                ? "bg-indigo-500 text-white"
                 : "bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
             )}
           >

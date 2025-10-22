@@ -160,7 +160,7 @@ export const formatReposForDisplay = (repos) => {
     forkCount: repo.fork_count || 0,
     openIssueCount: repo.open_issue_count || 0,
     languages: repo.languages || {},
-    languageColor: repo.language_color || (repo.languages?.color || ''),
+    languageColor: (repo.languages?.color || repo.language_color || ''),
     visibility: repo.visibility_level || 'Private',
     createdAt: repo.created_at,
     updatedAt: repo.updated_at,

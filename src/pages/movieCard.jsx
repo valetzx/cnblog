@@ -102,7 +102,7 @@ const MovieCard = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
       </div>
     );
   }
@@ -128,7 +128,7 @@ const MovieCard = () => {
   return (
     <div className="break-inside-avoid">
       <Card
-        className="w-full max-w-4xl mx-auto cursor-pointer hover:shadow-lg transition-shadow"
+        className="w-full cursor-pointer hover:shadow-lg transition-shadow"
         onClick={() => setIsDialogOpen(true)}
       >
         <CardContent className="p-0">

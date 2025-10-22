@@ -98,7 +98,7 @@ const HightLightxt = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-300 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <Card className="shadow-xl rounded-2xl overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <CardHeader className="bg-gradient-to-r from-indigo-500 to-indigo-400 text-white">
             <CardTitle className="text-2xl md:text-3xl font-bold">文本高亮搜索工具</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
@@ -111,7 +111,7 @@ const HightLightxt = () => {
                     value={text}
                     onChange={handleTextChange}
                     placeholder="在此输入您要处理的文本..."
-                    className="w-full h-64 p-4 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    className="w-full h-64 p-4 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
                   />
                 </div>
                 
@@ -140,7 +140,7 @@ const HightLightxt = () => {
                 
                 <Button 
                   onClick={handleHighlight}
-                  className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-md transition-all duration-300 hover:shadow-lg"
+                  className="w-full py-3 bg-gradient-to-r from-indigo-500 to-indigo-400 hover:from-indigo-400 hover:to-blue-700 text-white font-semibold rounded-xl shadow-md transition-all duration-300 hover:shadow-lg"
                 >
                   高亮关键词
                 </Button>
@@ -161,19 +161,19 @@ const HightLightxt = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white p-3 rounded-lg shadow-sm">
                       <p className="text-sm text-gray-500 dark:text-gray-400">字数</p>
-                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalWords}</p>
+                      <p className="text-2xl font-bold text-indigo-400 dark:text-blue-400">{stats.totalWords}</p>
                     </div>
                     <div className="bg-white p-3 rounded-lg shadow-sm">
                       <p className="text-sm text-gray-500 dark:text-gray-400">段落数</p>
-                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.paragraphs}</p>
+                      <p className="text-2xl font-bold text-indigo-400 dark:text-blue-400">{stats.paragraphs}</p>
                     </div>
                     <div className="bg-white p-3 rounded-lg shadow-sm">
                       <p className="text-sm text-gray-500 dark:text-gray-400">匹配数</p>
-                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.matches}</p>
+                      <p className="text-2xl font-bold text-indigo-400 dark:text-blue-400">{stats.matches}</p>
                     </div>
                     <div className="bg-white p-3 rounded-lg shadow-sm">
                       <p className="text-sm text-gray-500 dark:text-gray-400">关键词数</p>
-                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.foundKeywords.length + stats.notFoundKeywords.length}</p>
+                      <p className="text-2xl font-bold text-indigo-400 dark:text-blue-400">{stats.foundKeywords.length + stats.notFoundKeywords.length}</p>
                     </div>
                   </div>
                   

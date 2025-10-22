@@ -169,8 +169,8 @@ const RepoIssues = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-gray-600">加载issue信息中...</span>
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <span className="ml-2 text-muted-foreground">加载issue信息中...</span>
       </div>
     );
   }
@@ -178,9 +178,9 @@ const RepoIssues = () => {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-red-500 text-center">
+        <div className="text-destructive text-center">
           <p>加载issue信息失败</p>
-          <p className="text-sm text-gray-600 mt-1">{error}</p>
+          <p className="text-sm text-muted-foreground mt-1">{error}</p>
         </div>
       </div>
     );
@@ -204,10 +204,10 @@ const RepoIssues = () => {
                     </CardHeader>
                     <CardContent className="flex-grow flex flex-col">
                       <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                        <div className="text-xs sm:text-sm text-gray-500">
+                        <div className="text-xs sm:text-sm text-muted-foreground">
                           更新于 {formatDate(issue.updated_at)}
                         </div>
-                        <div className="text-xs sm:text-sm text-gray-600">
+                        <div className="text-xs sm:text-sm text-muted-foreground">
                           评论: {issue.comment_count}
                         </div>
                       </div>
@@ -222,7 +222,7 @@ const RepoIssues = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted-foreground">
             该仓库暂无问题
           </div>
         )}

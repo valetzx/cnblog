@@ -89,3 +89,67 @@
 * {
   -ms-overflow-style: none;
 }
+
+/* Mission页面专用 - 透明竖向悬浮滚动条 */
+.mission-vertical-scrollbar {
+  position: fixed;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 120px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.mission-vertical-scrollbar .scrollbar-track {
+  width: 4px;
+  height: 100%;
+  background: rgba(156, 163, 175, 0.2);
+  border-radius: 2px;
+  position: relative;
+  margin: 0 auto;
+}
+
+.mission-vertical-scrollbar .scrollbar-thumb {
+  position: absolute;
+  width: 8px;
+  height: 40px;
+  background: rgba(156, 163, 175, 0.6);
+  border-radius: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.mission-vertical-scrollbar .scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.8);
+}
+
+/* 深色模式样式 */
+.dark .mission-vertical-scrollbar .scrollbar-track {
+  background: rgba(107, 114, 128, 0.2);
+}
+
+.dark .mission-vertical-scrollbar .scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.6);
+}
+
+.dark .mission-vertical-scrollbar .scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.8);
+}
+
+/* 滚动条交互效果 - 水平滚动 */
+.mission-content-container {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: visible !important; /* 确保内容不被裁切 */
+  max-height: none !important; /* 移除高度限制 */
+}
+
+/* 移除不必要的水平滚动变换效果 */
+.mission-content-container.scrolling-horizontal {
+  transform: none;
+}

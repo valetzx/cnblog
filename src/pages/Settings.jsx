@@ -203,7 +203,7 @@ const Settings = ({ isDialog = false, onClose }) => {
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <motion.div
-                className="bg-blue-500 h-2 rounded-full"
+                className="bg-indigo-500 h-2 rounded-full"
                 initial={{ width: '0%' }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.1 }}

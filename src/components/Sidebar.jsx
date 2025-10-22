@@ -222,7 +222,7 @@ const Sidebar = () => {
                       <div>按住 [W] 开始思索</div>
                       <div className="w-full bg-gray-600 rounded-full h-1.5 mt-1">
                         <motion.div
-                          className="bg-blue-500 h-1.5 rounded-full"
+                          className="bg-indigo-500 h-1.5 rounded-full"
                           initial={{ width: 0 }}
                           animate={{ width: `${progress}%` }}
                           transition={{ duration: 0.1 }}

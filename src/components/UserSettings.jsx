@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate, Link } from 'react-router-dom';
 import { saveUserInfo, clearUserInfo } from '@/cnbUtils/indexedDB';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from '@/components/ui/sonner';
 
 const SimpleSettings = ({ onClose }) => {
   const { theme, setTheme } = useTheme();
@@ -158,7 +159,7 @@ const SimpleSettings = ({ onClose }) => {
       setPollingInterval(interval);
 
     } catch (error) {
-      alert(error.message);
+      toast.error(error.message);
       setQrCodeData(null);
     } finally {
       setIsLoading(false);
@@ -209,9 +210,9 @@ const SimpleSettings = ({ onClose }) => {
         setUserInfo(userData);
 
         // 显示成功消息
-        alert(`登录成功！欢迎 ${userData.nickname || userData.username}`);
+        toast.success(`登录成功！欢迎 ${userData.nickname || userData.username}`);
       } catch (error) {
-        alert(error.message);
+        toast.error(error.message);
         return; // 验证失败时不继续保存其他设置
       } finally {
         setIsLoading(false);
@@ -222,7 +223,7 @@ const SimpleSettings = ({ onClose }) => {
       try {
         await clearUserInfo();
         setUserInfo(null);
-        alert('已退出登录');
+        toast.info('已退出登录');
       } catch (error) {
         console.error('清除用户信息失败:', error);
       }
@@ -269,9 +270,9 @@ const SimpleSettings = ({ onClose }) => {
         setUserInfo(userData);
 
         // 显示成功消息
-        alert(`登录成功！欢迎 ${userData.nickname || userData.username}`);
+        toast.success(`登录成功！欢迎 ${userData.nickname || userData.username}`);
       } catch (error) {
-        alert(error.message);
+        toast.error(error.message);
         return; // 验证失败时不继续保存其他设置
       } finally {
         setIsLoading(false);
@@ -281,7 +282,7 @@ const SimpleSettings = ({ onClose }) => {
       try {
         await clearUserInfo();
         setUserInfo(null);
-        alert('已退出登录');
+        toast.info('已退出登录');
       } catch (error) {
         console.error('清除用户信息失败:', error);
       }
@@ -317,16 +318,31 @@ const SimpleSettings = ({ onClose }) => {
   };
 
   const handleLogout = async () => {
-    if (confirm('确定要退出登录吗？')) {
-      try {
-        await clearUserInfo();
-        setCnbSession('');
-        setUserInfo(null);
-        alert('已退出登录');
-      } catch (error) {
-        console.error('退出登录失败:', error);
-      }
+    if (onClose) {
+      onClose();
     }
+    toast.warning('确定要退出登录啦？T^T', {
+      duration: 6000,
+      position: 'top-right',
+      action: {
+        label: '确认',
+        onClick: async () => {
+          toast.dismiss();
+          try {
+            await clearUserInfo();
+            setCnbSession('');
+            setUserInfo(null);
+            toast.info('已退出登录');
+          } catch (error) {
+            console.error('退出登录失败:', error);
+          }
+        }
+      },
+      cancel: {
+        label: '取消',
+        onClick: () => toast.dismiss()
+      }
+    });
   };
 
   const handleSettingChange = (key, value) => {

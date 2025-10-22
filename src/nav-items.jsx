@@ -11,6 +11,7 @@ import OverallView from "@/ptools/OverallView.jsx";
 import LocalStorage from "@/ptools/LocalStorage.jsx";
 import User from "./pages/User.jsx";
 import Repo from "./pages/Repo.jsx";
+import Mission from "./pages/Mission.jsx";
 
 /**
  * Central place for defining the navigation items. Used for navigation components and routing.
@@ -69,6 +70,12 @@ export const navItems = [
     to: "/repo/*",
     icon: <FileTextIcon className="h-4 w-4" />,
     page: <Repo />,
+  },
+  {
+    title: "Mission",
+    to: "/mission/*",
+    icon: <FileTextIcon className="h-4 w-4" />,
+    page: <Mission />,
   },
   {
     title: "LongUrlConverter",
