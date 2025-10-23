@@ -65,7 +65,7 @@ export default async (request: Request, context: Context) => {
         proxyHeaders.delete('Authorization');
       }
       proxyHeaders.set('Sec-Fetch-Site', 'same-origin');
-      if (/^\/login\/.*/.test(path)) {
+      if (path === '/user' || /^\/login\/.*/.test(path)) {
         proxyHeaders.set('Accept', 'application/vnd.cnb.web+json');
       }
       const proxyRequest = new Request(targetUrl.toString(), {
