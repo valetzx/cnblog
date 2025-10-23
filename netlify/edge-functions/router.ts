@@ -64,11 +64,10 @@ export default async (request: Request, context: Context) => {
       if (authHeader === 'Bearer undefined') {
         proxyHeaders.delete('Authorization');
       }
-
-      // 创建代理请求（使用处理后的headers）
+      proxyHeaders.set('Sec-Fetch-Site', 'same-origin');
       const proxyRequest = new Request(targetUrl.toString(), {
         method: request.method,
-        headers: proxyHeaders, // 使用处理后的请求头
+        headers: proxyHeaders, 
         body: request.body,
         redirect: 'manual'
       });
