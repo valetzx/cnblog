@@ -122,6 +122,22 @@ export default async (request: Request, context: Context) => {
         }
       }
 
+      // 为 /login/ 路径的所有请求处理返回的Cookie
+      if (/^\/login\/.*/.test(path)) {
+        const cookies = response.headers.getSetCookie();
+        const cookieData: Record<string, string> = {};
+        
+        cookies.forEach(cookie => {
+          const parts = cookie.split(';')[0].split('=');
+          if (parts.length >= 2) {
+            const key = parts[0].trim();
+            const value = parts.slice(1).join('=').trim();
+            if (key === 'CNBSESSION' || key === 'csrfkey') {
+              cookieData[key] = value;
+            }
+          }
+        });
+        
       return newResponse;
 
     } catch (error) {
