@@ -45,10 +45,23 @@ export default async (request: Request, context: Context) => {
       const targetUrl = new URL(targetUrlString);
       targetUrl.search = url.search;
 
-      // 创建代理请求
+      // 处理session头，转换为CNBSESSION cookie
+      const sessionValue = request.headers.get('session');
+      const proxyHeaders = new Headers(request.headers); // 复制原始请求头
+
+      if (sessionValue) {
+        // 如果已有Cookie，在原有基础上添加；否则直接设置
+        const existingCookie = proxyHeaders.get('Cookie') || '';
+        const newCookie = existingCookie 
+          ? `${existingCookie}; CNBSESSION=${sessionValue}` 
+          : `CNBSESSION=${sessionValue}`;
+        proxyHeaders.set('Cookie', newCookie);
+      }
+
+      // 创建代理请求（使用处理后的headers）
       const proxyRequest = new Request(targetUrl.toString(), {
         method: request.method,
-        headers: request.headers,
+        headers: proxyHeaders, // 使用处理后的请求头
         body: request.body,
         redirect: 'manual'
       });
