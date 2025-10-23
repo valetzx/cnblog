@@ -27,11 +27,12 @@ export default async (request: Request, context: Context) => {
     targetBaseUrl = "https://api.cnb.cool";
     matchedPrefix = "/api";
   } 
-  // 2. 其他所有路径（包括/u/valetzx/workspaces、/xxx.css等）尝试代理到cnb.cool
-  else {
+  // 2. 排除单独的根路径 /，其他非/api路径代理到cnb.cool
+  else if (path !== "/") { // 只有当路径不是 / 时才代理到cnb.cool
     targetBaseUrl = "https://cnb.cool";
     matchedPrefix = ""; // 空前缀表示使用完整路径
   }
+  // 3. 根路径 / 不设置代理目标，会走到最后的return交由Netlify处理
 
   // 有匹配的代理规则时处理代理
   if (targetBaseUrl && matchedPrefix !== null) {
@@ -104,6 +105,6 @@ export default async (request: Request, context: Context) => {
     }
   }
 
-  // 无匹配规则时交由 Netlify 处理
+  // 无匹配规则时（包括单独请求 /）交由 Netlify 处理
   return;
 };
