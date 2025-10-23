@@ -62,14 +62,18 @@ export default async (request: Request, context: Context) => {
 
       // 改写 Referer 头为 targetBaseUrl 对应的路径
       const newReferer = `${targetBaseUrl.replace(/\/$/, '')}${remainingPath}${url.search}`;
-      proxyRequest.headers.set('Referer', newReferer); // 覆盖原Referer
-      // 兼容小写referer（部分客户端可能发送小写）
+      proxyRequest.headers.set('Referer', newReferer);
       proxyRequest.headers.set('referer', newReferer);
 
       // 发起代理请求
       const response = await fetch(proxyRequest);
 
-      // 创建新响应
+      // 若返回403，移交Netlify处理
+      if (response.status === 403) {
+        return; // 不返回403响应，交由Netlify处理
+      }
+
+      // 创建新响应（非403状态正常返回）
       const newResponse = new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
@@ -99,8 +103,6 @@ export default async (request: Request, context: Context) => {
       return newResponse;
 
     } catch (error) {
-      context.log("代理请求失败，移交Netlify处理:", error);
-      // 代理请求失败时，移交Netlify处理
       return;
     }
   }
