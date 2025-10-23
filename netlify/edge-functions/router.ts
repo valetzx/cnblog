@@ -28,19 +28,19 @@ export default async (request: Request, context: Context) => {
     matchedPrefix = "/api";
   } 
   // 2. 排除单独的根路径 /，其他非/api路径代理到cnb.cool
-  else if (path !== "/") { // 只有当路径不是 / 时才代理到cnb.cool
+  else if (path !== "/") {
     targetBaseUrl = "https://cnb.cool";
     matchedPrefix = ""; // 空前缀表示使用完整路径
   }
-  // 3. 根路径 / 不设置代理目标，会走到最后的return交由Netlify处理
+  // 3. 根路径 / 不设置代理目标，直接交由Netlify处理
 
   // 有匹配的代理规则时处理代理
   if (targetBaseUrl && matchedPrefix !== null) {
     try {
-      // 构造目标URL
+      // 构造目标URL路径部分
       const remainingPath = matchedPrefix 
         ? path.substring(matchedPrefix.length) 
-        : path; // 空前缀时使用完整路径
+        : path;
       const targetUrlString = targetBaseUrl.replace(/\/$/, '') + remainingPath;
       const targetUrl = new URL(targetUrlString);
       targetUrl.search = url.search;
@@ -59,6 +59,12 @@ export default async (request: Request, context: Context) => {
       proxyRequest.headers.set('X-Forwarded-For', clientIp);
       proxyRequest.headers.set('X-Forwarded-Host', url.host);
       proxyRequest.headers.set('X-Forwarded-Proto', url.protocol.replace(':', ''));
+
+      // 改写 Referer 头为 targetBaseUrl 对应的路径
+      const newReferer = `${targetBaseUrl.replace(/\/$/, '')}${remainingPath}${url.search}`;
+      proxyRequest.headers.set('Referer', newReferer); // 覆盖原Referer
+      // 兼容小写referer（部分客户端可能发送小写）
+      proxyRequest.headers.set('referer', newReferer);
 
       // 发起代理请求
       const response = await fetch(proxyRequest);
@@ -84,7 +90,6 @@ export default async (request: Request, context: Context) => {
         const location = response.headers.get('location')!;
         const redirectedUrl = new URL(location, targetUrl);
         
-        // 如果重定向到代理目标的同域，转换为代理路径
         if (redirectedUrl.origin === targetUrl.origin) {
           const newLocation = `${url.origin}${matchedPrefix}${redirectedUrl.pathname}${redirectedUrl.search}`;
           newResponse.headers.set('Location', newLocation);
@@ -94,17 +99,12 @@ export default async (request: Request, context: Context) => {
       return newResponse;
 
     } catch (error) {
-      context.log("代理请求失败:", error);
-      return new Response("代理请求失败", {
-        status: 502,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'text/plain;charset=UTF-8'
-        }
-      });
+      context.log("代理请求失败，移交Netlify处理:", error);
+      // 代理请求失败时，移交Netlify处理
+      return;
     }
   }
 
-  // 无匹配规则时（包括单独请求 /）交由 Netlify 处理
+  // 无匹配规则时（包括根路径 /）交由 Netlify 处理
   return;
 };
