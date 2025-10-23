@@ -230,23 +230,6 @@ const Settings = ({ isDialog = false, onClose }) => {
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">认证设置</h3>
-              <div className="space-y-2">
-                <Label htmlFor="cnb-token" className="text-gray-800 dark:text-gray-200">CNB Token</Label>
-                <Input
-                  id="cnb-token"
-                  type="password"
-                  value={settings.cnbToken}
-                  onChange={(e) => handleSettingChange('cnbToken', e.target.value)}
-                  placeholder="请输入 CNB Token（必须）"
-                />
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  用于访问 CNB API 的认证令牌
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
               <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">显示设置</h3>
               <div className="space-y-2">
                 <Label className="text-gray-800 dark:text-gray-200">排序方式</Label>
@@ -317,7 +300,17 @@ const Settings = ({ isDialog = false, onClose }) => {
                     id="api-url"
                     value={settings.apiUrl}
                     onChange={(e) => handleSettingChange('apiUrl', e.target.value)}
-                    placeholder="请输入 API URL"
+                    placeholder="请输入 API URL（此处可以填你自己的 api.cnb.cool 反代地址）"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cnb-token" className="text-gray-800 dark:text-gray-200">CNB Token</Label>
+                  <Input
+                    id="cnb-token"
+                    type="password"
+                    value={settings.cnbToken}
+                    onChange={(e) => handleSettingChange('cnbToken', e.target.value)}
+                    placeholder="请输入 CNB Token（当配置了API 项，则你需要使用你自己的 cnbToken）"
                   />
                 </div>
                 <div className="space-y-2">

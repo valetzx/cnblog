@@ -72,6 +72,7 @@ export const getUserWorkspaces = async ({
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+        'Accept': 'application/vnd.cnb.web+json',
         'session': session
       }
     });
@@ -143,6 +144,7 @@ const fetchAndUpdateCache = async ({ slug, branch, status, page, pageSize, sessi
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+        'Accept': 'application/vnd.cnb.web+json',
         'session': session
       }
     });

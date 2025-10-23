@@ -60,6 +60,7 @@ export const getUserTodoIssues = async ({
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+        'Accept': 'application/vnd.cnb.web+json',
         'session': session
       }
     });
@@ -123,6 +124,7 @@ const fetchAndUpdateCache = async ({ todoStatus, page, pageSize, session }) => {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+        'Accept': 'application/vnd.cnb.web+json',
         'session': session
       }
     });

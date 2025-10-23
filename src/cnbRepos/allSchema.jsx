@@ -15,6 +15,7 @@ export const getAllSchema = async (workspace, pipelineId) => {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+        'Accept': 'application/vnd.cnb.web+json',
         'session': session
       }
     });

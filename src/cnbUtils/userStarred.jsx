@@ -58,6 +58,7 @@ export const getUserStarredRepos = async ({
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+        'Accept': 'application/vnd.cnb.web+json',
         'session': session
       }
     });
@@ -121,6 +122,7 @@ const fetchAndUpdateCache = async ({ page, pageSize, session }) => {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+        'Accept': 'application/vnd.cnb.web+json',
         'session': session
       }
     });

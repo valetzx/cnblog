@@ -81,6 +81,7 @@ export const getUserActivities = async ({
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+        'Accept': 'application/vnd.cnb.web+json',
         'session': session
       }
     });
@@ -147,6 +148,7 @@ const fetchAndUpdateCache = async ({ page, pageSize, session, daysAgo = 3 }) => 
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+        'Accept': 'application/vnd.cnb.web+json',
         'session': session
       }
     });

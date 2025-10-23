@@ -1,5 +1,20 @@
 import { missionDB } from './indexedDB';
 
+// 创建统一的请求头
+const createHeaders = (session) => {
+  const headers = {
+    'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+    'Accept': 'application/vnd.cnb.web+json'
+  };
+
+  // 只有在有session时才添加session头
+  if (session) {
+    headers['session'] = session;
+  }
+
+  return headers;
+};
+
 // 获取看板标签列表
 export const getMissionTags = async (missionPath, session) => {
   try {
@@ -10,14 +25,9 @@ export const getMissionTags = async (missionPath, session) => {
     }
 
     // 从API获取
-    const headers = {
-      'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`
-    };
-
-    // 只有在有session时才添加session头
-    if (session) {
-      headers['session'] = session;
-    }
+    const headers = createHeaders(session);
+    // 为POST请求添加Content-Type头
+    headers['Content-Type'] = 'application/json';
 
     const response = await fetch(
       `${import.meta.env.VITE_CNBCOOKIE_API_URL}/${missionPath}/-/mission/view-list`,
@@ -70,14 +80,9 @@ export const getMissionConfig = async (missionPath, uuid, type, session) => {
     }
 
     // 从API获取
-    const headers = {
-      'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`
-    };
-
-    // 只有在有session时才添加session头
-    if (session) {
-      headers['session'] = session;
-    }
+    const headers = createHeaders(session);
+    // 为POST请求添加Content-Type头
+    headers['Content-Type'] = 'application/json';
 
     const response = await fetch(
       `${import.meta.env.VITE_CNBCOOKIE_API_URL}/${missionPath}/-/mission/view?id=${uuid}&viewType=${type}`,
@@ -113,14 +118,9 @@ export const getFieldConfigs = async (missionPath, session) => {
     }
 
     // 从API获取
-    const headers = {
-      'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`
-    };
-
-    // 只有在有session时才添加session头
-    if (session) {
-      headers['session'] = session;
-    }
+    const headers = createHeaders(session);
+    // 为POST请求添加Content-Type头
+    headers['Content-Type'] = 'application/json';
 
     const response = await fetch(
       `${import.meta.env.VITE_CNBCOOKIE_API_URL}/${missionPath}/-/mission-resource/fields?type=issues`,
@@ -156,15 +156,9 @@ export const getMissionData = async (missionPath, uuid, selectors, session) => {
     }
 
     // 从API获取
-    const headers = {
-      'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
-      'Content-Type': 'application/json'
-    };
-
-    // 只有在有session时才添加session头
-    if (session) {
-      headers['session'] = session;
-    }
+    const headers = createHeaders(session);
+    // 为POST请求添加Content-Type头
+    headers['Content-Type'] = 'application/json';
 
     // 使用传入的selectors参数构建请求体
     const requestBody = {

@@ -61,7 +61,8 @@ const SimpleSettings = ({ onClose }) => {
       const response = await fetch(`${import.meta.env.VITE_CNBCOOKIE_API_URL}/login/state`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`
+          'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+          'Accept': 'application/vnd.cnb.web+json'
         }
       });
 
@@ -83,7 +84,8 @@ const SimpleSettings = ({ onClose }) => {
       const response = await fetch(`${import.meta.env.VITE_CNBCOOKIE_API_URL}/login/state/${state}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`
+          'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+          'Accept': 'application/vnd.cnb.web+json'
         }
       });
 
@@ -181,6 +183,7 @@ const SimpleSettings = ({ onClose }) => {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+          'Accept': 'application/vnd.cnb.web+json',
           'session': `${session}`
         }
       });

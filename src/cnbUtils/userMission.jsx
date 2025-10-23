@@ -65,6 +65,7 @@ export const getUserMissions = async ({
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+        'Accept': 'application/vnd.cnb.web+json'
       }
     });
 
@@ -127,6 +128,7 @@ const fetchAndUpdateCache = async ({ username, page, pageSize, session, userId }
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+        'Accept': 'application/vnd.cnb.web+json'
       }
     });
 
