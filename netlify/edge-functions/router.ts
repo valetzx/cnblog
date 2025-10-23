@@ -49,6 +49,7 @@ export default async (request: Request, context: Context) => {
       const sessionValue = request.headers.get('session');
       const proxyHeaders = new Headers(request.headers); // 复制原始请求头
 
+      // 处理session转换为Cookie
       if (sessionValue) {
         // 如果已有Cookie，在原有基础上添加；否则直接设置
         const existingCookie = proxyHeaders.get('Cookie') || '';
@@ -56,6 +57,12 @@ export default async (request: Request, context: Context) => {
           ? `${existingCookie}; CNBSESSION=${sessionValue}` 
           : `CNBSESSION=${sessionValue}`;
         proxyHeaders.set('Cookie', newCookie);
+      }
+
+      // 新增：处理authorization头（值为Bearer undefined时移除）
+      const authHeader = proxyHeaders.get('Authorization');
+      if (authHeader === 'Bearer undefined') {
+        proxyHeaders.delete('Authorization');
       }
 
       // 创建代理请求（使用处理后的headers）
