@@ -137,7 +137,8 @@ export default async (request: Request, context: Context) => {
             }
           }
         });
-        
+      }
+
       return newResponse;
 
     } catch (error) {
