@@ -47,7 +47,7 @@ export default async (request: Request, context: Context) => {
 
       // 处理session头，转换为CNBSESSION cookie
       const sessionValue = request.headers.get('session');
-      const proxyHeaders = new Headers(request.headers); // 复制原始请求头
+      const proxyHeaders = new Headers(request.headers);
 
       // 处理session转换为Cookie
       if (sessionValue) {
@@ -65,6 +65,7 @@ export default async (request: Request, context: Context) => {
         proxyHeaders.delete('Authorization');
       }
       proxyHeaders.set('Sec-Fetch-Site', 'same-origin');
+      proxyHeaders.set('Accept', 'application/vnd.cnb.web+json');
       const proxyRequest = new Request(targetUrl.toString(), {
         method: request.method,
         headers: proxyHeaders, 
