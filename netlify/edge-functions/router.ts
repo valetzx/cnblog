@@ -59,7 +59,7 @@ export default async (request: Request, context: Context) => {
         proxyHeaders.set('Cookie', newCookie);
       }
 
-      // 新增：处理authorization头（值为Bearer undefined时移除）
+      // 处理authorization头（值为Bearer undefined时移除）
       const authHeader = proxyHeaders.get('Authorization');
       if (authHeader === 'Bearer undefined') {
         proxyHeaders.delete('Authorization');
@@ -92,10 +92,63 @@ export default async (request: Request, context: Context) => {
 
       // 若返回403，移交Netlify处理
       if (response.status === 403) {
-        return; // 不返回403响应，交由Netlify处理
+        return;
       }
 
-      // 创建新响应（非403状态正常返回）
+      // 针对/login/路径：在返回的JSON中添加_cookies对象封装Cookie信息
+      if (/^\/login\/.*/.test(path)) {
+        try {
+          // 解析原始响应的JSON数据
+          const originalData = await response.json();
+          
+          // 提取Set-Cookie中的CNBSESSION和csrfkey（保留空值）
+          const cookies = response.headers.getSetCookie();
+          const cookieData: Record<string, string> = {};
+          cookies.forEach(cookie => {
+            // 分割键值对（允许值为空）
+            const [keyPart, ...valueParts] = cookie.split(';')[0].split('=');
+            const key = keyPart?.trim();
+            const value = valueParts.join('=').trim(); // 处理值中可能包含的=
+            
+            // 只保留目标Cookie（即使值为空）
+            if (key && (key === 'CNBSESSION' || key === 'csrfkey')) {
+              cookieData[key] = value; // 空值会被处理为""
+            }
+          });
+          
+          // 合并原始数据和_cookies对象
+          const mergedData = {
+            ...originalData,
+            _cookies: cookieData 
+          };
+          
+          // 创建新的JSON响应
+          const newResponse = new Response(JSON.stringify(mergedData), {
+            status: response.status,
+            statusText: response.statusText,
+            headers: new Headers(response.headers) // 复制原始头
+          });
+          
+          // 设置CORS头
+          newResponse.headers.set('Access-Control-Allow-Origin', '*');
+          newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+          newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+          
+          // 移除安全头
+          newResponse.headers.delete('Content-Security-Policy');
+          newResponse.headers.delete('X-Frame-Options');
+          
+          // 确保响应类型为JSON
+          newResponse.headers.set('Content-Type', 'application/json');
+          
+          return newResponse;
+        } catch (error) {
+          // 若原始响应不是JSON，降级返回原始响应
+          console.error('解析/login/路径JSON失败:', error);
+        }
+      }
+
+      // 非/login/路径：正常处理响应
       const newResponse = new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
@@ -122,30 +175,12 @@ export default async (request: Request, context: Context) => {
         }
       }
 
-      // 为 /login/ 路径的所有请求处理返回的Cookie
-      if (/^\/login\/.*/.test(path)) {
-        const cookies = response.headers.getSetCookie();
-        const cookieData: Record<string, string> = {};
-        
-        cookies.forEach(cookie => {
-          const parts = cookie.split(';')[0].split('=');
-          if (parts.length >= 2) {
-            const key = parts[0].trim();
-            const value = parts.slice(1).join('=').trim();
-            if (key === 'CNBSESSION' || key === 'csrfkey') {
-              cookieData[key] = value;
-            }
-          }
-        });
-      }
-
       return newResponse;
 
     } catch (error) {
+      console.error('代理请求失败:', error);
       return;
     }
   }
-
-  // 无匹配规则时（包括根路径 /）交由 Netlify 处理
   return;
 };
