@@ -15,6 +15,8 @@ const PROXY_CONFIG = {
   "/fireworks": "https://api.fireworks.ai",
   "/openrouter": "https://openrouter.ai/api",
   // 任意网址
+  "/cnbapi": "https://api.cnb.cool",
+  "/cnbmain": "https://cnb.cool",
   "/2022": "https://valetzx.github.io",
   "/news": "https://newsnow-ahm.pages.dev"
 };
