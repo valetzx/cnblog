@@ -22,6 +22,10 @@ export default async (request: Request, context: Context) => {
   let targetBaseUrl: string | null = null;
   let matchedPrefix: string | null = null;
 
+  if (path === "/sw.js") {
+    return;
+  }
+
   // 1. 优先匹配 /api 路径（精确匹配或子路径）
   if (path === "/api" || path.startsWith("/api/")) {
     targetBaseUrl = "https://api.cnb.cool";
@@ -33,8 +37,6 @@ export default async (request: Request, context: Context) => {
     matchedPrefix = ""; // 空前缀表示使用完整路径
   }
   // 3. 根路径 / 不设置代理目标，直接交由Netlify处理
-
-  // 有匹配的代理规则时处理代理
   if (targetBaseUrl && matchedPrefix !== null) {
     try {
       // 构造目标URL路径部分
@@ -45,13 +47,10 @@ export default async (request: Request, context: Context) => {
       const targetUrl = new URL(targetUrlString);
       targetUrl.search = url.search;
 
-      // 处理session头，转换为CNBSESSION cookie
       const sessionValue = request.headers.get('session');
       const proxyHeaders = new Headers(request.headers);
-
-      // 处理session转换为Cookie
+    
       if (sessionValue) {
-        // 如果已有Cookie，在原有基础上添加；否则直接设置
         const existingCookie = proxyHeaders.get('Cookie') || '';
         const newCookie = existingCookie 
           ? `${existingCookie}; CNBSESSION=${sessionValue}` 
@@ -59,7 +58,6 @@ export default async (request: Request, context: Context) => {
         proxyHeaders.set('Cookie', newCookie);
       }
 
-      // 处理authorization头（值为Bearer undefined时移除）
       const authHeader = proxyHeaders.get('Authorization');
       if (authHeader === 'Bearer undefined') {
         proxyHeaders.delete('Authorization');
