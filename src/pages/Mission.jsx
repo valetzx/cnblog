@@ -4,6 +4,7 @@ import { Search, X, Kanban, Table, Calendar, Columns } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getMissionTags, getAllMissionData } from '@/cnbMission/getMession';
 import BoardView from '@/cnbMission/BoardView';
+import { LoadingSpinner } from '@/fetchPage/LoadingSpinner';
 
 const Mission = () => {
   const params = useParams();
@@ -328,12 +329,7 @@ const Mission = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
-          <div className="text-gray-500">加载中...</div>
-        </div>
-      </div>
+      <LoadingSpinner />
     );
   }
 

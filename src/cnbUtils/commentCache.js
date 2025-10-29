@@ -182,7 +182,7 @@ export const processCommentData = (comment) => {
 
   // 提取 cnb-md-image__upload 类的图片
   body = body.replace(/<img(?=[^>]*class="[^"]*cnb-md-image__upload[^"]*")(?=[^>]*src="([^"]+)")[^>]*>/g, (_, src) => {
-    images.push(`https://images.weserv.nl?url=https://cnb.cool${src}`);
+    images.push(`https://m.wbiao.cn/mallapi/wechat/picReverseUrl?url=https://cnb.cool${src}`);
     return '';
   });
 

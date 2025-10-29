@@ -1,39 +1,185 @@
 import { Input } from '@/components/ui/input';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { useParams } from 'react-router-dom';
-import { CardContent, CardHeader, Card as SettingsCard, Card, CardTitle } from '@/components/ui/card';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback, memo } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import ImagePreview from '@/components/ImagePreview';
-import CachedAvatar from '@/components/CachedAvatar';
 import { toast } from '@/components/ui/sonner';
 import AddCommit from '@/cnbRepos/addCommit';
+import InfoRenderer from '@/components/InfoRender';
+import CommitRender from '@/components/CommitRender';
+import RightBar, { extractHeadings } from '@/components/RightBar';
 import {
   saveCommentsToCache,
   getCommentsFromCache,
   isCommentCacheValid,
   processCommentData
 } from '@/cnbUtils/commentCache';
+import ImagePreview from '@/components/ImagePreview';
+// 导入图片缓存工具
+import {
+  getImageUrlFromCache,
+  saveImageUrlToCache,
+  getBatchImageUrlsFromCache
+} from '@/cnbUtils/imageCache';
+import { LoadingSpinner } from '@/fetchPage/LoadingSpinner';
+
+const MemoizedInfoRenderer = memo(InfoRenderer);
+const MemoizedCommitRender = memo(CommitRender);
 
 const Info = () => {
   const params = useParams();
-  const repopath = params['*'] || ''; // 使用通配符 * 获取仓库路径
-  const { number } = useParams(); // 获取issue编号
+  const repopath = params['*'] || ''; 
+  const { number } = useParams();
   const [issue, setIssue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [cards, setCards] = useState([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState(null);
+  const [hideStateLabels, setHideStateLabels] = useState(false);
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [headings, setHeadings] = useState([]);
+  const commentTimerRef = useRef(null);
+  const displayedCommentIdsRef = useRef(new Set());
+  
+  // 图片预览状态 - 提升到组件级别
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewImages, setPreviewImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [hideStateLabels, setHideStateLabels] = useState(false);
-  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' 或 'desc'，默认最新在前
-  const [sortBy, setSortBy] = useState('created_at');
-  
+
+  // 预加载的所有图片列表（文章图片 + 所有评论图片）
+  const [allImages, setAllImages] = useState([]);
+  const allImagesRef = useRef([]);
+
+  // 从 HTML 内容中提取所有图片
+  const extractAllImagesFromHTML = useCallback(async (html) => {
+    if (!html) return [];
+
+    const images = [];
+    const imgRegex = /<img[^>]*src="([^"]+)"[^>]*>/g;
+    let match;
+
+    while ((match = imgRegex.exec(html)) !== null) {
+      let src = match[1];
+      let finalSrc = src;
+
+      // 首先检查缓存中是否有正确的URL
+      const cachedUrl = await getImageUrlFromCache(repopath, number, 'infoimg', src);
+
+      if (cachedUrl) {
+        // 使用缓存的正确URL
+        finalSrc = cachedUrl;
+      } else {
+        // 处理 cnb-md-image__upload 类的图片
+        if (html.includes('cnb-md-image__upload') && html.includes(src)) {
+          finalSrc = `https://m.wbiao.cn/mallapi/wechat/picReverseUrl?url=https://cnb.cool${src}`;
+          // 保存到缓存
+          await saveImageUrlToCache(repopath, number, 'infoimg', src, finalSrc);
+        }
+      }
+
+      images.push(finalSrc);
+    }
+
+    return images;
+  }, [repopath, number]);
+
+  // 从 Markdown 内容中提取所有图片
+  const extractAllImagesFromMarkdown = useCallback(async (markdown) => {
+    if (!markdown) return [];
+
+    const images = [];
+    // 匹配 Markdown 图片语法: ![alt](url)
+    const markdownImgRegex = /!\[.*?\]\((.*?)\)/g;
+    let match;
+
+    while ((match = markdownImgRegex.exec(markdown)) !== null) {
+      let src = match[1];
+      let finalSrc = src;
+
+      // 首先检查缓存中是否有正确的URL
+      const cachedUrl = await getImageUrlFromCache(repopath, number, 'commiturl', src);
+
+      if (cachedUrl) {
+        // 使用缓存的正确URL
+        finalSrc = cachedUrl;
+      } else {
+        // 处理 cnb-md-image__upload 类的图片
+        if (src.includes('/uploads/') && src.includes('cnb-md-image__upload')) {
+          finalSrc = `https://m.wbiao.cn/mallapi/wechat/picReverseUrl?url=https://cnb.cool${src}`;
+          // 保存到缓存
+          await saveImageUrlToCache(repopath, number, 'commiturl', src, finalSrc);
+        }
+      }
+
+      images.push(finalSrc);
+    }
+
+    return images;
+  }, [repopath, number]);
+
+  // 更新所有图片列表
+  const updateAllImages = useCallback(async (issueData, commentsData) => {
+    const newAllImages = [];
+
+    // 提取文章中的图片
+    if (issueData?.body) {
+      const articleImages = await extractAllImagesFromHTML(issueData.body);
+      newAllImages.push(...articleImages);
+    }
+
+    // 提取所有评论中的图片
+    if (commentsData && commentsData.length > 0) {
+      for (const comment of commentsData) {
+        // 评论的 Markdown 内容中的图片
+        if (comment.description) {
+          const markdownImages = await extractAllImagesFromMarkdown(comment.description);
+          newAllImages.push(...markdownImages);
+        }
+
+        // 评论的附加图片
+        if (comment.images && comment.images.length > 0) {
+          newAllImages.push(...comment.images);
+        }
+      }
+    }
+
+    // 去重
+    const uniqueImages = [...new Set(newAllImages)];
+    setAllImages(uniqueImages);
+    allImagesRef.current = uniqueImages;
+  }, [extractAllImagesFromHTML, extractAllImagesFromMarkdown]);
+
+  // 处理图片点击事件
+  const handleImageClick = useCallback((imageUrl) => {
+    const clickedImageIndex = allImagesRef.current.findIndex(img => img === imageUrl);
+    if (clickedImageIndex >= 0) {
+      setPreviewImages(allImagesRef.current);
+      setCurrentImageIndex(clickedImageIndex);
+      setIsPreviewOpen(true);
+    }
+  }, []);
+
+  // 关闭预览
+  const handleClosePreview = useCallback(() => {
+    setIsPreviewOpen(false);
+  }, []);
+
+
+  const handleCommentAdded = useCallback(() => {
+    // 目前为空，但使用useCallback确保引用稳定
+  }, []);
+
+  // 当 issue 或评论数据变化时，更新所有图片列表
+  useEffect(() => {
+    if (issue || cards.length > 0) {
+      updateAllImages(issue, cards).catch(error => {
+        console.error('更新图片列表失败:', error);
+      });
+    }
+  }, [issue, cards, updateAllImages]);
+
   // 从浏览器存储中获取设置
   const [settings, setSettings] = useState(() => {
     const savedSettings = localStorage.getItem('settingsData');
@@ -62,18 +208,22 @@ const Info = () => {
     setHideStateLabels(settings.hideStateLabels || false);
   }, [settings.hideStateLabels]);
 
-  // 统一的加载状态组件
-  const LoadingSpinner = ({ message = "加载中..." }) => (
-    <div className="flex flex-col items-center justify-center py-12">
-      <div className="flex justify-center mb-4">
-        <svg className="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-      </div>
-      <p className="text-gray-600 dark:text-gray-400">{message}</p>
-    </div>
-  );
+  // 处理标题点击 - 使用原生JS滚动，避免状态更新
+  const handleHeadingClick = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      // 不再设置activeHeading状态，避免重新渲染
+    }
+  };
+
+  // 提取标题
+  useEffect(() => {
+    if (issue && issue.body) {
+      const extractedHeadings = extractHeadings(issue.body);
+      setHeadings(extractedHeadings);
+    }
+  }, [issue?.body]); // 只依赖issue.body而不是整个issue对象
 
   // 统一的错误显示组件
   const ErrorMessage = ({ message }) => (
@@ -88,6 +238,89 @@ const Info = () => {
       <div className="text-gray-500 text-xl">{message}</div>
     </div>
   );
+
+  // 显示评论通知
+  const showCommentNotification = (comment) => {
+    const { title, description } = comment;
+
+    // 如果文字过多，则用...省略
+    const truncatedDescription = description.length > 50
+      ? `${description.substring(0, 47)}...`
+      : description;
+
+    // 显示通知，结构为 "名字：内容"
+    toast.info(`${title}: ${truncatedDescription}`, {
+      duration: 5800,
+      position: 'bottom-right'
+    });
+  };
+
+  // 启动评论通知定时器
+  const startCommentNotificationTimer = () => {
+    if (commentTimerRef.current) {
+      clearInterval(commentTimerRef.current);
+    }
+
+    commentTimerRef.current = setInterval(async () => {
+      if (cards.length === 0) return;
+
+      try {
+        // 获取所有未显示的评论
+        const unshownComments = cards.filter(
+          card => !displayedCommentIdsRef.current.has(card.commentId)
+        );
+
+        if (unshownComments.length === 0) {
+          // 如果所有评论都已显示，停止当前定时器
+          stopCommentNotificationTimer();
+
+          // 等待1分钟（60000毫秒）后重新开始
+          setTimeout(() => {
+            displayedCommentIdsRef.current.clear();
+            startCommentNotificationTimer();
+          }, 60000);
+          return;
+        }
+
+        const randomIndex = Math.floor(Math.random() * unshownComments.length);
+        const selectedComment = unshownComments[randomIndex];
+        showCommentNotification(selectedComment);
+        // 标记为已显示
+        displayedCommentIdsRef.current.add(selectedComment.commentId);
+
+      } catch (error) {
+        console.error('显示评论通知失败:', error);
+      }
+    }, 5000); // 每5秒执行一次
+  };
+
+  // 停止评论通知定时器
+  const stopCommentNotificationTimer = () => {
+    if (commentTimerRef.current) {
+      clearInterval(commentTimerRef.current);
+      commentTimerRef.current = null;
+    }
+  };
+
+  // 组件卸载时清理定时器
+  useEffect(() => {
+    return () => {
+      stopCommentNotificationTimer();
+    };
+  }, []);
+
+  // 当评论数据变化时启动定时器
+  useEffect(() => {
+    if (cards.length > 0) {
+      stopCommentNotificationTimer();
+      displayedCommentIdsRef.current.clear();
+      startCommentNotificationTimer();
+    }
+
+    return () => {
+      stopCommentNotificationTimer();
+    };
+  }, [cards]);
 
   useEffect(() => {
     const fetchIssue = async () => {
@@ -129,6 +362,15 @@ const Info = () => {
     }
   }, [number, settings]);
 
+  // 排序评论函数
+  const sortComments = React.useCallback((commentsToSort) => {
+    return [...commentsToSort].sort((a, b) => {
+      const dateA = new Date(sortBy === 'updated_at' ? a.updatedAt || a.createdAt : a.createdAt);
+      const dateB = new Date(sortBy === 'updated_at' ? b.updatedAt || b.createdAt : b.createdAt);
+      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+    });
+  }, [sortOrder, sortBy]);
+
   // 加载评论
   const loadComments = async () => {
     if (commentsLoading) return;
@@ -148,19 +390,11 @@ const Info = () => {
           const processedComments = cachedComments.map(processCommentData);
 
           // 按指定字段和顺序排序
-          processedComments.sort((a, b) => {
-            const dateA = new Date(sortBy === 'updated_at' ? a.updatedAt || a.createdAt : a.createdAt);
-            const dateB = new Date(sortBy === 'updated_at' ? b.updatedAt || b.createdAt : b.createdAt);
-            return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-          });
-
-          setCards(processedComments);
+          setCards(sortComments(processedComments));
           setCommentsLoading(false);
           return;
         }
       }
-
-      // 缓存无效或没有缓存，从API加载
       const apiUrl = settings.apiUrl || import.meta.env.VITE_API_URL;
       const baseRepo = settings.baseRepo || import.meta.env.VITE_BASE_REPO;
       const cnbToken = settings.cnbToken || import.meta.env.VITE_CNB_TOKEN;
@@ -195,12 +429,7 @@ const Info = () => {
       
       if (updated) {
         // 按创建时间排序，根据 sortOrder 决定顺序
-        newCards.sort((a, b) => {
-          const dateA = new Date(sortBy === 'updated_at' ? a.updatedAt || a.createdAt : a.createdAt);
-          const dateB = new Date(sortBy === 'updated_at' ? b.updatedAt || b.createdAt : b.createdAt);
-          return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-        });
-        setCards(newCards);
+        setCards(sortComments(newCards));
 
         // 保存到缓存
         await saveCommentsToCache(data, repopath, number);
@@ -223,77 +452,18 @@ const Info = () => {
     }
   }, [issue]);
 
-  // 监听排序状态变化，重新加载评论
+  // 监听排序状态变化，重新排序现有评论
   useEffect(() => {
     if (cards.length > 0) {
-      loadComments();
+      setCards(prevCards => {
+        const sorted = sortComments(prevCards);
+        if (JSON.stringify(sorted) === JSON.stringify(prevCards)) {
+          return prevCards;
+        }
+        return sorted;
+      });
     }
-  }, [sortOrder, sortBy]);
-
-  // 头像组件
-  const Avatar = ({ username, nickname, className = "" }) => {
-    const [imgError, setImgError] = useState(false);
-    const avatarUrl = `https://cnb.cool/users/${username}/avatar/s`;
-    const initial = nickname?.charAt(0) || username?.charAt(0) || '匿';
-    
-    return (
-      <div className={`relative ${className}`}>
-        {!imgError ? (
-          <img
-            src={avatarUrl}
-            alt={`${nickname || username}的头像`}
-            className="rounded-full w-8 h-8 object-cover border border-gray-200"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="rounded-full w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-800 border border-blue-200 font-medium">
-            {initial}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // 格式化日期
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  // 处理 issue body 中的图片
-  const processIssueBody = (body) => {
-    if (!body) return '';
-    
-    // 提取并替换图片标签
-    let processedBody = body;
-    
-    // 处理 cnb-md-image__upload 类的图片
-    processedBody = processedBody.replace(
-      /<img(?=[^>]*class="[^"]*cnb-md-image__upload[^"]*")(?=[^>]*src="([^"]+)")[^>]*>/g,
-      (_, src) => `![image](https://images.weserv.nl?url=https://cnb.cool${src})`
-    );
-    
-    // 处理其他图片标签
-    processedBody = processedBody.replace(
-      /<img[^>]*src="([^"]+)"[^>]*>/g,
-      (_, src) => `![image](${src})`
-    );
-    
-    return processedBody;
-  };
-
-  // 处理图片点击事件
-  const handleImageClick = (images, index) => {
-    setPreviewImages(images);
-    setCurrentImageIndex(index);
-    setIsPreviewOpen(true);
-  };
+  }, [sortOrder, sortBy, sortComments]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -308,203 +478,49 @@ const Info = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 pb-10">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-4 break-words">{issue.title}</h1>
-          
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-slate-700">
-            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-2 sm:mb-0">
-              <div className="flex items-center">
-                <span className="text-gray-600 dark:text-gray-300 mr-2">作者:</span>
-                <a
-                  href={`/user/${issue.author?.username}`}
-                  className="font-medium text-gray-800 dark:text-gray-200"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.location.hash = `/user/${issue.author?.username}`;
-                  }}
-                >
-                  {issue.author?.nickname || issue.author?.username}
-                </a>
-              </div>
-              <div className="flex items-center">
-                <span className="text-gray-600 dark:text-gray-300 mr-2">更新时间:</span>
-                <span className="font-medium text-gray-800 dark:text-gray-200">{formatDate(issue.updated_at)}</span>
-              </div>
-            </div>
-            
-            {!hideStateLabels && (
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                issue.state === 'open'
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
-              }`}>
-                {issue.state === 'open' ? '开启' : '关闭'}
-              </span>
-            )}
-          </div>
-          
-          <div className="prose max-w-none dark:prose-invert">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                h1: ({node, ...props}) => <h1 className="text-2xl font-bold mt-6 mb-4 text-gray-800 dark:text-gray-100 break-words" {...props} />,
-                h2: ({node, ...props}) => <h2 className="text-xl font-bold mt-5 mb-3 text-gray-800 dark:text-gray-100 break-words" {...props} />,
-                h3: ({node, ...props}) => <h3 className="text-lg font-bold mt-4 mb-2 text-gray-800 dark:text-gray-100 break-words" {...props} />,
-                p: ({node, ...props}) => <p className="mb-3 leading-relaxed text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                li: ({node, ...props}) => <li className="mb-1 text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                a: ({node, ...props}) => <a className="text-indigo-400 hover:underline dark:text-blue-400 break-all" {...props} />,
-                img: ({node, ...props}) => (
-                  <img 
-                    {...props}
-                    className="max-w-full h-auto rounded-lg my-2 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => handleImageClick([props.src], 0)}
-                  />
-                ),
-                code: ({node, ...props}) => <code className="bg-gray-100 px-1 py-0.5 rounded text-sm dark:bg-slate-700 break-all" {...props} />,
-                pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded-lg overflow-x-auto my-3 dark:bg-slate-700" {...props} />,
-                blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-3 dark:border-slate-600 break-words" {...props} />,
-                table: ({node, ...props}) => <table className="min-w-full border-collapse border border-gray-300 my-3 dark:border-slate-600" {...props} />,
-                th: ({node, ...props}) => <th className="border border-gray-300 px-3 py-2 bg-gray-50 font-medium dark:border-slate-600 dark:bg-slate-700 break-words" {...props} />,
-                td: ({node, ...props}) => <td className="border border-gray-300 px-3 py-2 dark:border-slate-600 break-words" {...props} />,
-              }}
-            >
-              {processIssueBody(issue.body)}
-            </ReactMarkdown>
-          </div>
-        </div>
+    <>
+      <div className="w-full max-w-screen-lg mx-auto grid grid-cols-1 xl:grid-cols-5 gap-6 pb-4 px-4">
+        {/* 主要内容区域 */}
+        <div className="xl:col-span-4">
+          {/* 文章内容区域 */}
+          <MemoizedInfoRenderer
+            issue={issue}
+            hideStateLabels={hideStateLabels}
+            onImageClick={handleImageClick}
+          />
 
-        {/* 评论区域 */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">评论</h2>
-            <div className="flex space-x-2">
-            
-              <Button
-                variant="outline"
-                onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-                className="flex items-center space-x-1"
-              >
-                <span>{sortOrder === 'desc' ? '时间倒序' : '时间正序'}</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {sortOrder === 'desc' ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 13l5 5m0 0l5-5m-5 5V6" />
-                  )}
-                </svg>
-              </Button>
-              <AddCommit
-                repopath={repopath}
-                number={number}
-                onCommentAdded={loadComments}
-              />
-            </div>
-          </div>
+          {/* 评论区域 */}
+          <MemoizedCommitRender
+            comments={cards}
+            sortOrder={sortOrder}
+            setSortOrder={setSortOrder}
+            repopath={issue.repopath}
+            number={issue.number}
+            onCommentAdded={handleCommentAdded}
+            onImageClick={handleImageClick}
+          />
+        </div>
           
-          {commentsError && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 dark:bg-red-900 dark:border-red-700 dark:text-red-100">
-              {commentsError}
-            </div>
-          )}
-          
-          {commentsLoading && cards.length === 0 ? (
-            <LoadingSpinner message="正在加载评论..." />
-          ) : cards.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400 mb-4">暂无评论</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {cards.map((card, index) => (
-                <div key={card.commentId || index}>
-                  <Card className="flex flex-col h-full hover:shadow-md transition-shadow duration-300 dark:bg-slate-700 dark:border-slate-600">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center text-lg gap-2">
-                        <CachedAvatar
-                          username={card.username} 
-                          nickname={card.title}
-                        />
-                        <div className="flex flex-col">
-                          <a
-                            href={`/user/${card.username}`}
-                            className="truncate text-gray-800 dark:text-gray-100 transition-colors"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              window.location.hash = `/user/${card.username}`;
-                            }}
-                          >
-                            {card.title}
-                          </a>
-                          <span className="text-xs text-gray-500 font-normal dark:text-gray-400">
-                            {formatDate(card.createdAt)}
-                          </span>
-                        </div>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex-grow">
-                      <div className="prose max-w-none dark:prose-invert">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            h1: ({node, ...props}) => <h1 className="text-2xl font-bold mt-6 mb-4 text-gray-800 dark:text-gray-100 break-words" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="text-xl font-bold mt-5 mb-3 text-gray-800 dark:text-gray-100 break-words" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-lg font-bold mt-4 mb-2 text-gray-800 dark:text-gray-100 break-words" {...props} />,
-                            p: ({node, ...props}) => <p className="mb-3 leading-relaxed text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                            ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                            li: ({node, ...props}) => <li className="mb-1 text-gray-700 dark:text-gray-300 break-words" {...props} />,
-                            a: ({node, ...props}) => <a className="text-indigo-400 hover:underline dark:text-blue-400 break-all" {...props} />,
-                            img: ({node, ...props}) => (
-                              <img
-                                {...props}
-                                className="max-w-full h-auto rounded-lg my-2 cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => handleImageClick([props.src], 0)}
-                              />
-                            ),
-                            code: ({node, ...props}) => <code className="bg-gray-100 px-1 py-0.5 rounded text-sm dark:bg-slate-700 break-all" {...props} />,
-                            pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded-lg overflow-x-auto my-3 dark:bg-slate-700" {...props} />,
-                            blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-3 dark:border-slate-600 break-words" {...props} />,
-                            table: ({node, ...props}) => <table className="min-w-full border-collapse border border-gray-300 my-3 dark:border-slate-600" {...props} />,
-                            th: ({node, ...props}) => <th className="border border-gray-300 px-3 py-2 bg-gray-50 font-medium dark:border-slate-600 dark:bg-slate-700 break-words" {...props} />,
-                            td: ({node, ...props}) => <td className="border border-gray-300 px-3 py-2 dark:border-slate-600 break-words" {...props} />,
-                          }}
-                        >
-                          {card.description}
-                        </ReactMarkdown>
-                      </div>
-                      {card.images && card.images.length > 0 && (
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                          {card.images.slice(0, 4).map((img, imgIndex) => (
-                            <img 
-                              key={imgIndex} 
-                              src={img} 
-                              alt={`评论图片 ${imgIndex + 1}`} 
-                              className="rounded-md object-cover w-full h-24 cursor-pointer hover:opacity-80 transition-opacity"
-                              onClick={() => handleImageClick(card.images, imgIndex)}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* 右侧目录区域 */}
+        <div>
+          <RightBar
+            headings={headings}
+            onHeadingClick={handleHeadingClick}
+          />
         </div>
       </div>
-      
+
+      {/* 统一的图片预览模态框 */}
       <ImagePreview
         images={previewImages}
         initialIndex={currentImageIndex}
         isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
+        onClose={handleClosePreview}
+        repopath={repopath}
+        number={number}
+        imageType="infoimg"
       />
-    </div>
+    </>
   );
 };
 

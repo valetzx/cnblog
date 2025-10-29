@@ -6,6 +6,9 @@ import { defaultHomepageData } from '@/lib/homepageData';
 import { SelectItem, Select, SelectContent, SelectValue, SelectTrigger } from '@/components/ui/select';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Clock, MessageSquare } from 'lucide-react';
+import { useLoadMore, LoadMoreIndicator } from '@/fetchPage/loadmore';
+
 const Index = () => {
   const navigate = useNavigate();
   const [issues, setIssues] = useState([]);
@@ -28,6 +31,17 @@ const Index = () => {
   const [selectedTag, setSelectedTag] = useState('all');
   const [searchResults, setSearchResults] = useState('all');
   const [pinnedArticles, setPinnedArticles] = useState([]);
+
+  // 使用加载更多hook
+  const { loadingMore, hasMore } = useLoadMore(
+    settings,
+    issues,
+    setIssues,
+    closedIssues,
+    setClosedIssues,
+    allIssues,
+    setAllIssues
+  );
 
   // 页面加载时从本地存储获取设置
   useEffect(() => {
@@ -98,7 +112,7 @@ const Index = () => {
         setClosedIssues(cachedClosedIssues);
         setAllIssues(cachedAllIssues);
       } catch (e) {
-        console.error('解析缓存数据失败', e);
+        // 解析缓存数据失败
       }
     } else {
       setIssues(defaultHomepageData.issues);
@@ -149,6 +163,7 @@ const Index = () => {
         const openData = await openResponse.json();
         const closedData = await closedResponse.json();
         
+        // 只更新第一页数据，保留后续页面的缓存数据
         setIssues(openData);
         setClosedIssues(closedData);
         setAllIssues([...openData, ...closedData]);
@@ -234,12 +249,13 @@ const Index = () => {
   // 格式化日期
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('zh-CN', {
+    return date.toLocaleString('zh-CN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: false
     });
   };
 
@@ -317,11 +333,11 @@ return (
                     </CardHeader>
                     <CardContent className="flex-grow flex flex-col pb-2">
                       <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                        <div className="text-xs sm:text-sm text-gray-500">
-                          更新于 {formatDate(issue.updated_at)}
+                        <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                          <Clock size={14} /> {formatDate(issue.last_acted_at)}
                         </div>
-                        <div className="text-xs sm:text-sm text-gray-600">
-                          评论: {issue.comment_count}
+                        <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                          <MessageSquare size={14} /> {issue.comment_count}
                         </div>
                       </div>
                       <div className="mb-3 flex-grow">
@@ -342,6 +358,9 @@ return (
         )}
         </div>
       </div>
+
+      {/* 加载更多指示器 */}
+      <LoadMoreIndicator loadingMore={loadingMore} hasMore={hasMore} />
     </div>
   );
 };

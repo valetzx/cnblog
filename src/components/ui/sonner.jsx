@@ -5,8 +5,6 @@ import { useEffect, useState } from "react"
 // 自定义toast组件，带有进度条边框
 const ProgressToast = ({ id, duration = 4000, status = 'default', children, action, cancel }) => {
   const isInfinite = duration === Infinity
-
-  // 根据状态获取颜色类名
   const getStatusColor = () => {
     switch (status) {
       case 'success':

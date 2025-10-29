@@ -2,11 +2,12 @@ import SettingsPage from '@/pages/Settings';
 import UserSettings from '@/components/UserSettings';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { SquarePlus, Home, Compass, Settings } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DialogContent, DialogTitle, Dialog, DialogHeader, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getUserInfo } from '@/cnbUtils/indexedDB';
+import { toast } from '@/components/ui/sonner';
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(true);
@@ -18,8 +19,48 @@ const Sidebar = () => {
   const [pressTimer, setPressTimer] = useState(null);
   const [progress, setProgress] = useState(0);
   const [userInfo, setUserInfo] = useState(null);
+  const [announcementShown, setAnnouncementShown] = useState(false);
+  const announcementDisplayedRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 页面加载时显示公告
+  useEffect(() => {
+    const hasSeenAnnouncement = localStorage.getItem('hasSeen1024Announcement');
+    const today = new Date().toDateString();
+
+    if (hasSeenAnnouncement !== 'never' && hasSeenAnnouncement !== today && !announcementDisplayedRef.current) {
+      announcementDisplayedRef.current = true;
+
+      toast.info('祝大家1024程序员节日快乐 !!! » 点击下方按钮查收惊喜', {
+        duration: 30000,
+        position: 'top-center',
+        action: {
+          label: '领取 1024GPU 额度',
+          onClick: () => {
+            window.open('https://cnb.cool/cnb/feedback/-/issues/2284', '_blank');
+            localStorage.setItem('hasSeen1024Announcement', '');
+            setAnnouncementShown(true);
+          }
+        },
+        cancel: {
+          label: '今日不再提示',
+          onClick: () => {
+            const today = new Date().toDateString();
+            localStorage.setItem('hasSeen1024Announcement', today);
+            setAnnouncementShown(true);
+            toast.dismiss();
+          }
+        },
+        onDismiss: () => {
+          localStorage.setItem('hasSeen1024Announcement', '');
+          setAnnouncementShown(true);
+        }
+      });
+
+      setAnnouncementShown(true);
+    }
+  }, []);
 
   // 加载用户信息
   useEffect(() => {
@@ -114,7 +155,6 @@ const Sidebar = () => {
                   id="logo-monochrome"
                   style={{ width: "32px", height: "32px" }}
                   className=""
-                  xmlns="http://www.w3.org/2000/svg"
                   width="16"
                   height="16"
                   viewBox="0 0 16 16"

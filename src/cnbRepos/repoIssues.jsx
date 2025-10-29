@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { CardContent, CardHeader, Card, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { LoadingSpinner } from '@/fetchPage/LoadingSpinner';
+import { Loader2, Clock, MessageSquare } from 'lucide-react';
 
 const RepoIssues = () => {
   const params = useParams();
@@ -168,10 +169,7 @@ const RepoIssues = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-        <span className="ml-2 text-muted-foreground">加载issue信息中...</span>
-      </div>
+    <LoadingSpinner />
     );
   }
 
@@ -202,13 +200,13 @@ const RepoIssues = () => {
                         {settings.hideIssueNumbers ? null : `#${issue.number} `}{issue.title}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="flex-grow flex flex-col">
+                    <CardContent className="flex-grow flex flex-col pb-2">
                       <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                        <div className="text-xs sm:text-sm text-muted-foreground">
-                          更新于 {formatDate(issue.updated_at)}
+                        <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                          <Clock size={14} /> {formatDate(issue.updated_at)}
                         </div>
-                        <div className="text-xs sm:text-sm text-muted-foreground">
-                          评论: {issue.comment_count}
+                        <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                          <MessageSquare size={14} /> {issue.comment_count}
                         </div>
                       </div>
                       <div className="mb-3 flex-grow">

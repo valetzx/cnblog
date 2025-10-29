@@ -10,6 +10,7 @@ import UserSettings from '@/components/UserSettings';
 import { Search, Code, Cloud, Users, BookOpen, Package, Heart, GitBranch, X, Mail, MapPin, Globe, Calendar, UserCheck, Star, Activity, CheckSquare, PlusSquare, AlertCircle, File, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getUserInfo } from '@/cnbUtils/indexedDB';
+import { LoadingSpinner } from '@/fetchPage/LoadingSpinner';
 import { getUserInfoFromAPI, formatUserInfoFromAPI } from '@/cnbUtils/userInfo';
 import { getUserCreatedIssues, formatIssuesForDisplay, formatDisplayDate } from '@/cnbUtils/userCreated';
 import { getUserStarredRepos, formatReposForDisplay, getPrimaryLanguage } from '@/cnbUtils/userStarred';
@@ -458,9 +459,7 @@ const User = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center">
-        <div className="text-center">加载中...</div>
-      </div>
+      <LoadingSpinner />
     );
   }
 
@@ -1514,9 +1513,7 @@ const User = () => {
           </DialogHeader>
           <div className="p-6 pt-4">
             {allSchemaLoading && (
-              <div className="text-center py-8">
-                <p className="text-gray-500 dark:text-gray-400">加载中...</p>
-              </div>
+              <LoadingSpinner />
             )}
 
             {allSchemaError && (

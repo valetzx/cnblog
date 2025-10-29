@@ -1,52 +1,65 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getBatchImageUrlsFromCache } from '@/cnbUtils/imageCache';
 
-const ImagePreview = ({ images, initialIndex = 0, isOpen, onClose }) => {
+const ImagePreview = ({
+  images,
+  initialIndex = 0,
+  isOpen,
+  onClose,
+  repopath = '',
+  number = '',
+  imageType = 'infoimg'
+}) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [cachedImages, setCachedImages] = useState([]);
   const imageRef = useRef(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentIndex(initialIndex);
-      setScale(1);
-      setRotation(0);
-      setPosition({ x: 0, y: 0 });
+  // 从缓存获取图片URL
+  const fetchCachedImages = useCallback(async () => {
+    if (!repopath || !number || !images || images.length === 0) {
+      setCachedImages(images || []);
+      return;
     }
-  }, [isOpen, initialIndex]);
 
-  const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
-    setScale(1);
-    setRotation(0);
-    setPosition({ x: 0, y: 0 });
-  };
+    try {
+      const cachedUrls = await getBatchImageUrlsFromCache(repopath, number, imageType, images);
+      const processedImages = images.map(url => cachedUrls[url] || url);
+      setCachedImages(processedImages);
+    } catch (error) {
+      console.error('从缓存获取图片失败:', error);
+      setCachedImages(images || []);
+    }
+  }, [repopath, number, imageType, images]);
 
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
-    setScale(1);
-    setRotation(0);
-    setPosition({ x: 0, y: 0 });
-  };
+  // 使用 useCallback 缓存事件处理函数
+  const handlePrevious = useCallback(() => {
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : cachedImages.length - 1));
+  }, [cachedImages.length]);
 
-  const handleZoomIn = () => {
+  const handleNext = useCallback(() => {
+    setCurrentIndex((prev) => (prev < cachedImages.length - 1 ? prev + 1 : 0));
+  }, [cachedImages.length]);
+
+  const handleZoomIn = useCallback(() => {
     setScale((prev) => Math.min(prev + 0.1, 5));
-  };
+  }, []);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     setScale((prev) => Math.max(prev - 0.1, 0.5));
-  };
+  }, []);
 
-  const handleRotate = () => {
+  const handleRotate = useCallback(() => {
     setRotation((prev) => (prev + 90) % 360);
-  };
+  }, []);
 
-  const handleMouseDown = (e) => {
+  const handleMouseDown = useCallback((e) => {
     if (scale > 1) {
       setIsDragging(true);
       setDragStart({
@@ -54,22 +67,22 @@ const ImagePreview = ({ images, initialIndex = 0, isOpen, onClose }) => {
         y: e.clientY - position.y,
       });
     }
-  };
+  }, [scale, position]);
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = useCallback((e) => {
     if (isDragging && scale > 1) {
       setPosition({
         x: e.clientX - dragStart.x,
         y: e.clientY - dragStart.y,
       });
     }
-  };
+  }, [isDragging, scale, dragStart]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     if (!isOpen) return;
     
     switch (e.key) {
@@ -89,7 +102,33 @@ const ImagePreview = ({ images, initialIndex = 0, isOpen, onClose }) => {
         handleZoomOut();
         break;
     }
-  };
+  }, [isOpen, onClose, handlePrevious, handleNext, handleZoomIn, handleZoomOut]);
+
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    if (e.target === imageRef.current) {
+      if (e.deltaY < 0) {
+        handleZoomIn();
+      } else {
+        handleZoomOut();
+      }
+    }
+  }, [handleZoomIn, handleZoomOut]);
+
+  // 使用 useMemo 缓存当前图片 URL，避免不必要的重新渲染
+  const currentImageSrc = useMemo(() => {
+    return cachedImages && cachedImages.length > 0 ? cachedImages[currentIndex] : '';
+  }, [cachedImages, currentIndex]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentIndex(initialIndex);
+      setScale(1);
+      setRotation(0);
+      setPosition({ x: 0, y: 0 });
+      fetchCachedImages();
+    }
+  }, [isOpen, initialIndex, fetchCachedImages]);
 
   useEffect(() => {
     if (isOpen) {
@@ -105,48 +144,40 @@ const ImagePreview = ({ images, initialIndex = 0, isOpen, onClose }) => {
         document.removeEventListener('wheel', handleWheel);
       };
     }
-  }, [isOpen, isDragging, position, scale, rotation]);
+  }, [isOpen, handleKeyDown, handleMouseMove, handleMouseUp, handleWheel]);
 
-  const handleWheel = (e) => {
-    e.preventDefault();
-    if (e.target === imageRef.current) {
-      if (e.deltaY < 0) {
-        handleZoomIn();
-      } else {
-        handleZoomOut();
-      }
-    }
-  };
-
-  if (!isOpen || !images || images.length === 0) return null;
+  if (!isOpen || !cachedImages || cachedImages.length === 0) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/80">
       <div className="relative w-full h-full flex items-center justify-center">
+        {/* 关闭按钮 */}
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-4 right-4 text-white hover:bg-white/20 z-50"
+          className="absolute top-6 right-6 text-white hover:bg-white/20 z-60"
           onClick={onClose}
         >
           <X className="h-6 w-6" />
         </Button>
 
-        {images.length > 1 && (
+        {cachedImages.length > 1 && (
           <>
+            {/* 上一张按钮 */}
             <Button
               variant="ghost"
               size="icon"
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 z-50"
+              className="absolute left-6 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 z-60"
               onClick={handlePrevious}
             >
               <ChevronLeft className="h-8 w-8" />
             </Button>
 
+            {/* 下一张按钮 */}
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 z-50"
+              className="absolute right-6 top-1/2 transform -translate-y-1/2 text-white hover:bg-white/20 z-60"
               onClick={handleNext}
             >
               <ChevronRight className="h-8 w-8" />
@@ -154,11 +185,11 @@ const ImagePreview = ({ images, initialIndex = 0, isOpen, onClose }) => {
           </>
         )}
 
-        <div className="max-w-4xl max-h-[90vh] flex items-center justify-center z-40">
+        <div className="max-w-4xl max-h-[90vh] flex items-center justify-center z-50">
           <div className="relative">
             <img
               ref={imageRef}
-              src={images[currentIndex]}
+              src={currentImageSrc}
               alt={`图片 ${currentIndex + 1}`}
               className="max-w-full max-h-full object-contain cursor-move"
               style={{
@@ -170,7 +201,7 @@ const ImagePreview = ({ images, initialIndex = 0, isOpen, onClose }) => {
             />
             
             {/* 工具栏 */}
-            <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 bg-black/50 rounded-lg p-2">
+            <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-3 bg-black/50 rounded-lg p-3 z-60">
               <Button
                 variant="ghost"
                 size="icon"
@@ -181,7 +212,7 @@ const ImagePreview = ({ images, initialIndex = 0, isOpen, onClose }) => {
                 <ZoomOut className="h-5 w-5" />
               </Button>
               
-              <span className="text-white flex items-center px-2">
+              <span className="text-white flex items-center px-3">
                 {Math.round(scale * 100)}%
               </span>
 
@@ -205,20 +236,17 @@ const ImagePreview = ({ images, initialIndex = 0, isOpen, onClose }) => {
               </Button>
             </div>
 
-            {images.length > 1 && (
-              <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                {images.map((_, index) => (
+            {cachedImages.length > 1 && (
+              <div className="fixed bottom-28 left-1/2 transform -translate-x-1/2 flex space-x-3 z-60">
+                {cachedImages.map((_, index) => (
                   <button
                     key={index}
-                    className={`w-2 h-2 rounded-full transition-colors ${
-                      index === currentIndex ? 'bg-white' : 'bg-white/50'
+                    className={`w-2 h-2 rounded-full transition-all duration-200 hover:scale-125 ${
+                      index === currentIndex
+                        ? 'bg-white scale-125 shadow-lg'
+                        : 'bg-white/50 hover:bg-white/80'
                     }`}
-                    onClick={() => {
-                      setCurrentIndex(index);
-                      setScale(1);
-                      setRotation(0);
-                      setPosition({ x: 0, y: 0 });
-                    }}
+                    onClick={() => setCurrentIndex(index)}
                   />
                 ))}
               </div>

@@ -153,3 +153,19 @@
 .mission-content-container.scrolling-horizontal {
   transform: none;
 }
+/* 3D翻转动画相关样式 */
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+.perspective-1000 {
+  perspective: 2000px;
+}
+
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}

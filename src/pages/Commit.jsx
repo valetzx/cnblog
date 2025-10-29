@@ -57,7 +57,7 @@ const Commit = () => {
         const images = [];
         // 修复图片提取逻辑
         body = body.replace(/<img(?=[^>]*class="[^"]*cnb-md-image__upload[^"]*")(?=[^>]*src="([^"]+)")[^>]*>/g, (_, src) => {
-          images.push(`https://images.weserv.nl?url=https://cnb.cool${src}`);
+          images.push(`https://m.wbiao.cn/mallapi/wechat/picReverseUrl?url=https://cnb.cool${src}`);
           return '';
         });
         // 处理其他图片

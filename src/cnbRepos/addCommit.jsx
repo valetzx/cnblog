@@ -85,7 +85,7 @@ const AddComment = ({ repopath, number, onCommentAdded }) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="ml-2">
+        <Button variant="outline" className="ml-2 border-gray-300 dark:border-slate-500 hover:border-indigo-400 transition-colors">
           新增评论
         </Button>
       </DialogTrigger>

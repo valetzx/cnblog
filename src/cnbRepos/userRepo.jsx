@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { File, Folder, GitBranch, Code, Loader2 } from 'lucide-react';
 import { saveRepoBranches, saveRepoFiles, getRepoBranchesFromCache, getRepoFilesFromCache, getCacheMetadata } from './indexedDB';
+import { LoadingSpinner } from '@/fetchPage/LoadingSpinner';
 
 const UserRepo = ({ repoPath, initialBranchHash }) => {
   const [branches, setBranches] = useState([]);
@@ -167,8 +168,7 @@ const UserRepo = ({ repoPath, initialBranchHash }) => {
   if (loading && !branches.length) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-        <span className="ml-2 text-gray-600">加载中...</span>
+        <LoadingSpinner />
       </div>
     );
   }

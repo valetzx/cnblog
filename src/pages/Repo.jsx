@@ -4,8 +4,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Code, AlertCircle, Search, X, GitBranch, Tag, Loader2 } from 'lucide-react';
+import { Code, AlertCircle, Search, X, GitBranch, Tag, Loader2, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LoadingSpinner } from '@/fetchPage/LoadingSpinner';
 import UserRepo from '@/cnbRepos/userRepo';
 import { getRepoBranchesFromCache, getCacheMetadata, saveRepoBranches } from '@/cnbRepos/indexedDB';
 import RepoIssues from '@/cnbRepos/repoIssues';
@@ -15,7 +16,7 @@ const Repo = () => {
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const repopath = params['*'] || ''; // 使用通配符 * 获取完整路径
+  const repopath = params['*'] || '';
   const [selectedTag, setSelectedTag] = useState('coderepo');
   const [searchKey, setSearchKey] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -23,13 +24,14 @@ const Repo = () => {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [workspaceLoading, setWorkspaceLoading] = useState(false); // 添加工作空间加载状态
+  const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const searchInputRef = useRef(null);
 
   // 标签定义
   const tags = [
     { id: 'coderepo', label: '代码', icon: <Code size={16} /> },
     { id: 'codeissue', label: 'ISSUE', icon: <AlertCircle size={16} /> },
+    { id: 'codewiki', label: 'WIKI', icon: <BookOpen size={16} /> },
   ];
 
   // 解析查询参数
@@ -225,10 +227,7 @@ const Repo = () => {
 
   if (loading && !branches.length) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-        <span className="ml-2 text-gray-600">加载分支信息中...</span>
-      </div>
+      <LoadingSpinner />
     );
   }
 
