@@ -93,7 +93,7 @@ export default async (request: Request, context: Context) => {
         return;
       }
 
-      // 针对/login/路径：在返回的JSON中添加_cookies对象封装Cookie信息
+      // 针对/login/路径：在返回的JSON中添加_cookies对象封装Cookie信息，并设置Set-Cookie
       if (/^\/login\/.*/.test(path)) {
         try {
           // 解析原始响应的JSON数据
@@ -138,6 +138,15 @@ export default async (request: Request, context: Context) => {
           
           // 确保响应类型为JSON
           newResponse.headers.set('Content-Type', 'application/json');
+
+          // 关键修改：将CNBSESSION写入Set-Cookie头，确保浏览器保存
+          if (cookieData.CNBSESSION) {
+            // 根据需要调整cookie属性（Path、Domain、Secure等）
+            newResponse.headers.set(
+              'Set-Cookie', 
+              `CNBSESSION=${cookieData.CNBSESSION};`
+            );
+          }
           
           return newResponse;
         } catch (error) {
