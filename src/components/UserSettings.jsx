@@ -42,7 +42,7 @@ const SimpleSettings = ({ onClose }) => {
     }
 
     // 检查是否有用户信息
-    const savedUser = localStorage.getItem('current_user');
+    const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
       setUserInfo(JSON.parse(savedUser));
     }

@@ -4,10 +4,103 @@ import { CardContent, CardHeader, Card, CardTitle } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
 import { defaultHomepageData } from '@/lib/homepageData';
 import { SelectItem, Select, SelectContent, SelectValue, SelectTrigger } from '@/components/ui/select';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Clock, MessageSquare } from 'lucide-react';
 import { useLoadMore, LoadMoreIndicator } from '@/fetchPage/loadmore';
+
+// 智能瀑布流布局组件
+const MasonryLayout = ({ children, className = '' }) => {
+  const containerRef = useRef(null);
+  const [columns, setColumns] = useState(4);
+
+  useEffect(() => {
+    const calculateColumns = () => {
+      if (!containerRef.current) return;
+
+      const containerWidth = containerRef.current.offsetWidth;
+
+      // 智能计算列数，基于容器宽度和内容密度
+      let calculatedColumns = 1;
+
+      if (containerWidth >= 1530) {
+        calculatedColumns = 4; // 2xl 屏幕
+      } else if (containerWidth >= 1280) {
+        calculatedColumns = 4; // xl 屏幕
+      } else if (containerWidth >= 1024) {
+        calculatedColumns = 3; // lg 屏幕
+      } else if (containerWidth >= 768) {
+        calculatedColumns = 2; // md 屏幕
+      } else if (containerWidth >= 640) {
+        calculatedColumns = 2; // sm 屏幕
+      } else {
+        calculatedColumns = 1; // 移动端
+      }
+
+      // 根据内容数量动态调整列数
+      const childCount = React.Children.count(children);
+      if (childCount > 0) {
+        // 如果内容较少，减少列数以保持布局紧凑
+        if (childCount <= calculatedColumns * 2) {
+          calculatedColumns = Math.max(1, Math.min(calculatedColumns, Math.ceil(childCount / 2)));
+        }
+
+        // 如果内容非常少，使用单列布局
+        if (childCount <= 2) {
+          calculatedColumns = 1;
+        }
+      }
+
+      setColumns(calculatedColumns);
+    };
+
+    calculateColumns();
+
+    // 添加窗口大小变化监听
+    const handleResize = () => {
+      calculateColumns();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [children]); // 依赖 children 以便在内容变化时重新计算
+
+  // 将子元素分配到各列
+  const columnWrapper = {};
+  const result = [];
+
+  // 创建列
+  for (let i = 0; i < columns; i++) {
+    columnWrapper[`column${i}`] = [];
+  }
+
+  // 分配子元素到各列（平衡各列高度）
+  const columnHeights = new Array(columns).fill(0);
+
+  React.Children.forEach(children, (child) => {
+    // 找到当前最矮的列
+    const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
+    columnWrapper[`column${shortestColumnIndex}`].push(child);
+
+    // 模拟添加高度（这里使用固定值，实际可以根据内容高度调整）
+    columnHeights[shortestColumnIndex] += 200; // 假设每个项目大约200px高度
+  });
+
+  // 创建列容器
+  for (let i = 0; i < columns; i++) {
+    result.push(
+      <div key={i} className="masonry-column">
+        {columnWrapper[`column${i}`]}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className={`masonry ${className}`}>
+      {result}
+    </div>
+  );
+};
 
 const Index = () => {
   const navigate = useNavigate();
@@ -321,10 +414,10 @@ return (
       
       <div>
         {displayIssues.length > 0 ? (
-          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 sm:gap-4 space-y-4">
+          <MasonryLayout className="gap-4 sm:gap-4">
             {displayIssues.map((issue) => (
-              <div key={issue.number} className="break-inside-avoid">
-                <Card className="w-full hover:shadow-md transition-shadow flex flex-col">
+              <div key={issue.number} className="masonry-item">
+                <Card className="w-full hover:shadow-md transition-shadow flex flex-col h-full">
                   <Link to={`/info/${issue.number}/${settings.baseRepo}`} className="flex flex-col h-full">
                     <CardHeader className="pb-3 flex-shrink-0">
                       <CardTitle className="text-base sm:text-lg line-clamp-2">
@@ -334,10 +427,10 @@ return (
                     <CardContent className="flex-grow flex flex-col pb-2">
                       <div className="flex items-center justify-between mb-3 flex-shrink-0">
                         <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                          <Clock size={14} /> {formatDate(issue.last_acted_at)}
+                          <Clock size={16} /> {formatDate(issue.last_acted_at)}
                         </div>
                         <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                          <MessageSquare size={14} /> {issue.comment_count}
+                          <MessageSquare size={16} /> {issue.comment_count}
                         </div>
                       </div>
                       <div className="mb-3 flex-grow">
@@ -350,7 +443,7 @@ return (
                 </Card>
               </div>
             ))}
-          </div>
+          </MasonryLayout>
         ) : (
             <div className="text-center py-8 text-gray-500">
               暂无问题

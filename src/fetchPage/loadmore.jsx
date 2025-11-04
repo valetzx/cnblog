@@ -160,10 +160,24 @@ export const useLoadMore = (settings, issues, setIssues, closedIssues, setClosed
 
 // 加载更多指示器组件
 export const LoadMoreIndicator = ({ loadingMore, hasMore }) => {
+  // 获取备案信息
+  const beiAn = import.meta.env.VITE_BEI_AN;
+
   if (!hasMore) {
+    // 如果没有更多内容，显示备案信息（如果存在）
     return (
-      <div className="text-center py-4 text-gray-500">
-        没有更多内容了
+      <div className="text-center py-4">
+        <div className="text-gray-500 mb-2">没有更多内容了</div>
+        {beiAn && (
+          <a
+            href="https://beian.miit.gov.cn/#/Integrated/recordQuery"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-400 hover:text-gray-600 text-sm"
+          >
+            {beiAn}
+          </a>
+        )}
       </div>
     );
   }
@@ -175,7 +189,20 @@ export const LoadMoreIndicator = ({ loadingMore, hasMore }) => {
           <LoadingSpinner />
         </div>
       ) : (
-        <div className="text-gray-500">滚动加载更多</div>
+        <div className="text-gray-500">
+          {beiAn ? (
+            <a
+              href="https://beian.miit.gov.cn/#/Integrated/recordQuery"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-700"
+            >
+              {beiAn}
+            </a>
+          ) : (
+            "滚动加载更多"
+          )}
+        </div>
       )}
     </div>
   );

@@ -148,8 +148,8 @@ const MovieCard = () => {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl w-[95vw] max-h-[85vh] overflow-y-auto mx-auto my-auto rounded-lg shadow-xl">
-          <DialogHeader className="sticky top-0 bg-background z-10 p-4 sm:p-6 border-b">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[85vh] overflow-y-auto mx-auto my-auto rounded-lg shadow-xl [&_[data-radix-dialog-close]]:z-[10]">
+          <DialogHeader className="bg-background p-4 sm:p-6 border-b">
             <DialogTitle className="text-lg sm:text-xl">{movieData.mov_title}</DialogTitle>
           </DialogHeader>
           <div className="p-4 sm:p-6 space-y-4">

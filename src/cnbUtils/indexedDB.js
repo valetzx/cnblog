@@ -137,7 +137,7 @@ export const saveUserInfo = async (userInfo, cnbSession) => {
     await transaction.done;
 
     // 同时存储到localStorage以便快速访问
-    localStorage.setItem('current_user', JSON.stringify(userData));
+    localStorage.setItem('currentUser', JSON.stringify(userData));
 
     return userData;
   } catch (error) {
@@ -149,7 +149,7 @@ export const saveUserInfo = async (userInfo, cnbSession) => {
 export const getUserInfo = async (userId = null) => {
   try {
     // 首先尝试从localStorage获取（更快）
-    const cachedUser = localStorage.getItem('current_user');
+    const cachedUser = localStorage.getItem('currentUser');
     if (cachedUser) {
       const userData = JSON.parse(cachedUser);
       // 如果指定了用户ID且匹配，或者没有指定用户ID，则返回
@@ -231,7 +231,7 @@ export const clearUserInfo = async () => {
     await transaction.done;
 
     // 同时清除localStorage
-    localStorage.removeItem('current_user');
+    localStorage.removeItem('currentUser');
     localStorage.removeItem('CNBSESSION');
   } catch (error) {
     console.error('清除用户信息失败:', error);

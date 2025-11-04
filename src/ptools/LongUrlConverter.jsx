@@ -14,6 +14,8 @@ const LongUrlConverter = () => {
   const [binaryResult, setBinaryResult] = useState('');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [targetUrl, setTargetUrl] = useState('');
+  const [countdown, setCountdown] = useState(3);
 
   // 将字符串转换为二进制表示
   const stringToBinary = (str) => {
@@ -57,7 +59,22 @@ const LongUrlConverter = () => {
     try {
       const decodedUrl = binaryToString(number);
       new URL(decodedUrl); // 验证URL格式
-      window.location.href = decodedUrl;
+      setTargetUrl(decodedUrl); // 设置目标URL
+      setCountdown(3); // 重置倒计时
+
+      // 开始倒计时
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            window.location.href = decodedUrl;
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
     } catch (e) {
       setError('无法解析二进制数据为有效URL');
     }
@@ -153,14 +170,23 @@ const LongUrlConverter = () => {
             <CardTitle>正在跳转...</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-center text-gray-500">
-              正在解析二进制数据并跳转到目标URL...
-            </p>
             {error && (
               <Alert variant="destructive" className="mt-4">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+            {targetUrl && (
+              <div className="">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  目标地址： {targetUrl}
+                </p>
+              </div>
+            )}
+            <div className="mt-4 text-center">
+              <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                {countdown}秒后自动跳转
+              </p>
+            </div>
             <div className="mt-4 flex justify-center">
               <Button onClick={() => navigate('/long')}>
                 返回转换器

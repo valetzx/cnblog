@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getUserInfo } from '@/cnbUtils/indexedDB';
 import { toast } from '@/components/ui/sonner';
+import useLoginStatus from '@/fetchPage/isLogin';
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(true);
@@ -24,9 +25,24 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // 使用登录状态hook
+  const { isLoggedIn, isChecking, lastCheckedDate, checkLoginStatus, refreshLoginStatus } = useLoginStatus();
+
+  // 监听登录状态变化，如果登录失效则显示错误提示
+  useEffect(() => {
+    if (isLoggedIn === false && lastCheckedDate) {
+      // 只有在确实检查过登录状态且登录失效时才显示错误
+      toast.error('CNB登录已失效', {
+        description: '请重新登录以继续使用',
+        duration: 10000,
+        position: 'bottom-right'
+      });
+    }
+  }, [isLoggedIn, lastCheckedDate]);
+
   // 页面加载时显示公告
   useEffect(() => {
-    const hasSeenAnnouncement = localStorage.getItem('hasSeen1024Announcement');
+    const hasSeenAnnouncement = localStorage.getItem('noteshowAt');
     const today = new Date().toDateString();
 
     if (hasSeenAnnouncement !== 'never' && hasSeenAnnouncement !== today && !announcementDisplayedRef.current) {
@@ -39,7 +55,7 @@ const Sidebar = () => {
           label: '领取 1024GPU 额度',
           onClick: () => {
             window.open('https://cnb.cool/cnb/feedback/-/issues/2284', '_blank');
-            localStorage.setItem('hasSeen1024Announcement', '');
+            localStorage.setItem('noteshowAt', '');
             setAnnouncementShown(true);
           }
         },
@@ -47,13 +63,13 @@ const Sidebar = () => {
           label: '今日不再提示',
           onClick: () => {
             const today = new Date().toDateString();
-            localStorage.setItem('hasSeen1024Announcement', today);
+            localStorage.setItem('noteshowAt', today);
             setAnnouncementShown(true);
             toast.dismiss();
           }
         },
         onDismiss: () => {
-          localStorage.setItem('hasSeen1024Announcement', '');
+          localStorage.setItem('noteshowAt', '');
           setAnnouncementShown(true);
         }
       });

@@ -229,18 +229,21 @@ const IssueCard = () => {
   const [issues, setIssues] = useState([]);
   const [randomTitle, setRandomTitle] = useState('');
   const [settings, setSettings] = useState({ baseRepo: '' });
-  const [isRefreshing, setIsRefreshing] = useState(false); // 添加刷新状态
-  const [selectedLabel, setSelectedLabel] = useState(''); // 存储当前选中的标签
-
+  const [isRefreshing, setIsRefreshing] = useState(false); 
+  const [selectedLabel, setSelectedLabel] = useState(''); 
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   // 刷新随机标题的函数
   const refreshRandomTitle = () => {
     setIsRefreshing(true); // 开始刷新动画
+    setError(null);
 
     const homepageData = localStorage.getItem('homepageData');
     if (homepageData) {
       try {
         const parsedData = JSON.parse(homepageData);
-        const allIssues = parsedData.issues || [];
+        const allIssues = parsedData.allIssues || parsedData.issues || [];
 
         // 获取所有不重复的标签
         const allLabels = [...new Set(allIssues.flatMap(issue =>
@@ -260,53 +263,43 @@ const IssueCard = () => {
           );
 
           setIssues(filteredIssues.slice(0, 5)); // 只显示前5个
+        } else {
+          setIssues(allIssues.slice(0, 5)); // 如果没有标签，显示所有issue的前5个
+          setRandomTitle('热门讨论');
         }
       } catch (error) {
         console.error('解析 homepageData 数据失败:', error);
+        setError('数据解析失败');
       }
+    } else {
+      setError('暂无数据');
     }
 
     // 500ms后停止动画
     setTimeout(() => {
       setIsRefreshing(false);
+      setIsLoading(false);
     }, 500);
   };
 
   useEffect(() => {
-    // 从 localStorage 获取 homepageData 数据
-    const homepageData = localStorage.getItem('homepageData');
-    if (homepageData) {
-      try {
-        const parsedData = JSON.parse(homepageData);
+    refreshRandomTitle();
 
-        // 获取所有 issues
-        const allIssues = parsedData.issues || [];
-
-        // 获取所有不重复的标签
-        const allLabels = [...new Set(allIssues.flatMap(issue =>
-          issue.labels ? issue.labels.map(label => label.name) : []
-        ))];
-
-        if (allLabels.length > 0) {
-          // 随机选择一个标签
-          const randomIndex = Math.floor(Math.random() * allLabels.length);
-          const selectedLabelName = allLabels[randomIndex];
-          setRandomTitle(selectedLabelName);
-          setSelectedLabel(selectedLabelName);
-
-          // 筛选包含该标签的issue
-          const filteredIssues = allIssues.filter(issue =>
-            issue.labels && issue.labels.some(label => label.name === selectedLabelName)
-          );
-
-          setIssues(filteredIssues.slice(0, 5)); // 只显示前5个
-        }
-      } catch (error) {
-        console.error('解析 homepageData 数据失败:', error);
+    // 监听localStorage变化
+    const handleStorageChange = (e) => {
+      if (e.key === 'homepageData' || e.key === 'settingsData') {
+        refreshRandomTitle();
       }
-    }
+    };
 
-    // 从 localStorage 获取 settings 数据
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // 从 localStorage 获取 settings 数据
+  useEffect(() => {
     const settingsData = localStorage.getItem('settingsData');
     if (settingsData) {
       try {
@@ -318,8 +311,77 @@ const IssueCard = () => {
     }
   }, []);
 
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 mt-2">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <Tag size={16} className="text-indigo-500 mr-2" />
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200">加载中...</h3>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <div className="animate-pulse flex space-x-4">
+            <div className="flex-1 space-y-2 py-1">
+              <div className="h-4 bg-gray-200 dark:bg-slate-600 rounded"></div>
+              <div className="h-4 bg-gray-200 dark:bg-slate-600 rounded w-5/6"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 mt-2">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <Tag size={16} className="text-indigo-500 mr-2" />
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200">更多标签</h3>
+          </div>
+          <button
+            onClick={refreshRandomTitle}
+            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            title="刷新"
+          >
+            <RefreshCw
+              size={16}
+              className={`transition-transform duration-500 ${isRefreshing ? 'animate-spin' : ''}`}
+            />
+          </button>
+        </div>
+        <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+          <p className="text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (issues.length === 0) {
-    return null;
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 mt-2">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <Tag size={16} className="text-indigo-500 mr-2" />
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200">更多标签</h3>
+          </div>
+          <button
+            onClick={refreshRandomTitle}
+            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            title="刷新"
+          >
+            <RefreshCw
+              size={16}
+              className={`transition-transform duration-500 ${isRefreshing ? 'animate-spin' : ''}`}
+            />
+          </button>
+        </div>
+        <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+          <p className="text-sm">暂无更多内容</p>
+        </div>
+      </div>
+    );
   }
 
   return (
