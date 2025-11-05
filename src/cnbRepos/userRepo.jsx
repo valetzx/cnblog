@@ -83,6 +83,32 @@ const UserRepo = ({ repoPath, initialBranchHash }) => {
     }
   };
 
+  // 获取文件类型信息
+  const fetchFileTypes = async (branchHash) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_CNBCOOKIE_API_URL}/${repoPath}/-/git/contents/${branchHash}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_CNBCOOKIE}`,
+            'Accept': 'application/vnd.cnb.web+json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`获取文件类型失败: ${response.status} ${response.statusText}`);
+      }
+
+      const typeData = await response.json();
+      return typeData.entries || [];
+    } catch (err) {
+      console.error('获取文件类型失败:', err);
+      return [];
+    }
+  };
+
   // 获取文件列表
   const fetchFiles = async (branchHash) => {
     try {
@@ -120,7 +146,22 @@ const UserRepo = ({ repoPath, initialBranchHash }) => {
       }
 
       const filesData = await response.json();
-      const fileEntries = filesData.entries || [];
+      let fileEntries = filesData.entries || [];
+
+      // 获取文件类型信息来补充数据
+      const typeEntries = await fetchFileTypes(branchHash);
+
+      // 合并文件类型信息
+      if (typeEntries.length > 0) {
+        fileEntries = fileEntries.map(file => {
+          const typeEntry = typeEntries.find(entry => entry.path === file.path);
+          return {
+            ...file,
+            type: typeEntry?.type || (file.entries ? 'dir' : 'file')
+          };
+        });
+      }
+
       setFiles(fileEntries);
 
       // 保存到缓存
@@ -219,7 +260,7 @@ const UserRepo = ({ repoPath, initialBranchHash }) => {
                     <tr key={file.path} className="hover:bg-muted/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center">
-                          {file.entries ? (
+                          {file.type === 'dir' ? (
                             <Folder className="w-4 h-4 mr-2 text-indigo-500" />
                           ) : (
                             <File className="w-4 h-4 mr-2 text-muted-foreground" />

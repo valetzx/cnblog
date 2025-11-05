@@ -1,7 +1,7 @@
 import SettingsPage from '@/pages/Settings';
 import UserSettings from '@/components/UserSettings';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { SquarePlus, Home, Compass, Settings } from 'lucide-react';
+import { SquarePlus, Home, Compass, Settings, Swords } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { DialogContent, DialogTitle, Dialog, DialogHeader, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -221,10 +221,10 @@ const Sidebar = () => {
             </Link>
             
             <Link 
-              to="/commit" 
+              to="/start" 
               className="flex items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
             >
-              <SquarePlus size={24} className={`flex-shrink-0 ${location.pathname === '/commit' ? 'text-[#838EF8]' : ''}`} />
+              <Swords size={24} className={`flex-shrink-0 ${location.pathname === '/start' ? 'text-[#838EF8]' : ''}`} />
               {!collapsed && <span className="ml-3 whitespace-nowrap text-gray-800 dark:text-gray-200">更多</span>}
             </Link>
           </nav>
@@ -350,10 +350,10 @@ const Sidebar = () => {
           </Link>
           
           <Link 
-            to="/commit" 
+            to="/start" 
             className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors min-w-[60px]"
           >
-            <SquarePlus size={24} className={location.pathname === '/commit' ? 'text-[#838EF8]' : ''} />
+            <Swords size={24} className={location.pathname === '/start' ? 'text-[#838EF8]' : ''} />
           </Link>
           
           <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>

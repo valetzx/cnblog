@@ -1,4 +1,4 @@
-import { HomeIcon, FileTextIcon, SettingsIcon, Compass, Link, Globe, Pyramid as Panorama, Film, Database, UserIcon } from 'lucide-react'
+import { HomeIcon, FileTextIcon, SettingsIcon, Compass, Link, Globe, Pyramid as Panorama, Film, Database, UserIcon, Swords } from 'lucide-react'
 import Index from "./pages/Index.jsx";
 import Commit from "./pages/Commit.jsx";
 import Settings from "./pages/Settings.jsx";
@@ -12,6 +12,8 @@ import LocalStorage from "@/ptools/LocalStorage.jsx";
 import User from "./pages/User.jsx";
 import Repo from "./pages/Repo.jsx";
 import Mission from "./pages/Mission.jsx";
+import AiBattle from "./pages/AiBattle.jsx";
+import RoleAssignment from "./pages/RoleAssignment.jsx";
 
 /**
  * Central place for defining the navigation items. Used for navigation components and routing.
@@ -76,6 +78,18 @@ export const navItems = [
     to: "/mission/*",
     icon: <FileTextIcon className="h-4 w-4" />,
     page: <Mission />,
+  },
+  {
+    title: "AI对战",
+    to: "/aibattle",
+    icon: <Swords className="h-4 w-4" />,
+    page: <AiBattle />,
+  },
+  {
+    title: "角色分配",
+    to: "/start",
+    icon: <Swords className="h-4 w-4" />,
+    page: <RoleAssignment />,
   },
   {
     title: "LongUrlConverter",
