@@ -1,0 +1,167 @@
+/* CNB Logo 基础样式 */
+.cnb-logo {
+  transition: all 0.6s ease-out;
+  overflow: visible;
+}
+
+/* 确保普通logo的路径填充颜色继承父元素 */
+.cnb-logo .cnb-logo__path {
+  fill: currentColor;
+}
+
+/* 悬停旋转效果 */
+.cnb-logo--hover {
+  transform: rotate(360deg);
+  transition: transform 0.6s ease-in-out;
+}
+
+/* 路径绘制动画 */
+.cnb-logo--animated.cnb-logo--draw .cnb-logo__path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.4;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: drawPath 1s ease-in-out forwards;
+}
+
+.cnb-logo--animated.cnb-logo--draw.cnb-logo--loop .cnb-logo__path {
+  animation: drawPathLoop 3.5s ease-in-out infinite;
+}
+
+/* 路径分段动画延迟 */
+.cnb-logo--animated.cnb-logo--draw .cnb-logo__path--1 { animation-delay: 0s; }
+.cnb-logo--animated.cnb-logo--draw .cnb-logo__path--2 { animation-delay: 0.2s; }
+.cnb-logo--animated.cnb-logo--draw .cnb-logo__path--3 { animation-delay: 0.4s; }
+.cnb-logo--animated.cnb-logo--draw .cnb-logo__path--4 { animation-delay: 0.6s; }
+.cnb-logo--animated.cnb-logo--draw .cnb-logo__path--5 { animation-delay: 0.8s; }
+
+/* 淡入动画 */
+.cnb-logo--animated.cnb-logo--fade {
+  opacity: 0;
+  animation: fadeIn 3s ease-in-out forwards;
+}
+
+.cnb-logo--animated.cnb-logo--fade.cnb-logo--loop {
+  animation: fadeInOut 3s ease-in-out infinite;
+}
+
+/* 淡入动画 - 路径分段 */
+.cnb-logo--animated.cnb-logo--fade .cnb-logo__path {
+  opacity: 0;
+  animation: fadeIn 3s ease-in-out forwards;
+  fill: currentColor; /* 确保继承父元素颜色 */
+}
+
+/* 淡入动画 - 路径分段延迟 */
+.cnb-logo--animated.cnb-logo--fade .cnb-logo__path--1 { animation-delay: 0s; }
+.cnb-logo--animated.cnb-logo--fade .cnb-logo__path--2 { animation-delay: 0.3s; }
+.cnb-logo--animated.cnb-logo--fade .cnb-logo__path--3 { animation-delay: 0.6s; }
+.cnb-logo--animated.cnb-logo--fade .cnb-logo__path--4 { animation-delay: 0.9s; }
+.cnb-logo--animated.cnb-logo--fade .cnb-logo__path--5 { animation-delay: 1.2s; }
+
+/* 淡入淡出循环动画 - 路径分段 */
+.cnb-logo--animated.cnb-logo--fade.cnb-logo--loop .cnb-logo__path {
+  animation: fadeInOutLoop 3s ease-in-out infinite;
+  fill: currentColor; /* 确保继承父元素颜色 */
+}
+
+/* 淡入淡出循环动画 - 路径分段延迟 */
+.cnb-logo--animated.cnb-logo--fade.cnb-logo--loop .cnb-logo__path--1 {
+  animation-delay: 0s;
+}
+.cnb-logo--animated.cnb-logo--fade.cnb-logo--loop .cnb-logo__path--2 {
+  animation-delay: 0.3s;
+}
+.cnb-logo--animated.cnb-logo--fade.cnb-logo--loop .cnb-logo__path--3 {
+  animation-delay: 0.6s;
+}
+.cnb-logo--animated.cnb-logo--fade.cnb-logo--loop .cnb-logo__path--4 {
+  animation-delay: 0.9s;
+}
+.cnb-logo--animated.cnb-logo--fade.cnb-logo--loop .cnb-logo__path--5 {
+  animation-delay: 1.2s;
+}
+
+/* 关键帧动画 */
+@keyframes drawPath {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes drawPathLoop {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  40% {
+    stroke-dashoffset: 0;
+  }
+  60% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 100;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 关键帧动画 - 淡入淡出循环（路径分段，慢速淡出） */
+@keyframes fadeInOutLoop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  75% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+/* 响应式调整 */
+@media (prefers-reduced-motion: reduce) {
+  .cnb-logo--animated {
+    animation: none !important;
+  }
+
+  .cnb-logo--animated.cnb-logo--fade {
+    opacity: 1;
+  }
+
+  .cnb-logo--animated.cnb-logo--draw .cnb-logo__path {
+    stroke-dashoffset: 0;
+    fill: currentColor;
+  }
+}

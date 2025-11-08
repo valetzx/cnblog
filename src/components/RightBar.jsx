@@ -503,7 +503,7 @@ const RightBar = ({
       {/* 右侧栏内容 - 始终使用悬浮模式样式 */}
       <div
         ref={rightBarRef}
-        className={`transition-all duration-300 fixed right-4 top-0 h-[calc(100vh-2rem)] z-40 transform w-80 max-w-sm ${
+        className={`transition-all duration-300 fixed right-4 top-0 h-screen z-40 transform w-80 max-w-sm ${
           isCollapsed
             ? isHovering
               ? 'opacity-100 translate-x-0'

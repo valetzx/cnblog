@@ -195,7 +195,7 @@ export const LoadMoreIndicator = ({ loadingMore, hasMore }) => {
               href="https://beian.miit.gov.cn/#/Integrated/recordQuery"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-gray-700"
+              className="hover:text-[#838EF8]"
             >
               {beiAn}
             </a>

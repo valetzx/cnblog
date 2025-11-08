@@ -163,7 +163,7 @@ const TagFilter = ({ tags, selectedTag, onTagChange, onSearchResults }) => {
               <button
                 type="button"
                 onClick={handleSearchClear}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-[#838EF8]"
               >
                 <X size={16} />
               </button>

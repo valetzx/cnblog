@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/sonner';
+import { clearCommentCache } from '@/cnbUtils/commentCache';
 
 const AddComment = ({ repopath, number, onCommentAdded }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -68,6 +69,13 @@ const AddComment = ({ repopath, number, onCommentAdded }) => {
       toast.success('评论发表成功');
       setCommentText('');
       setIsOpen(false);
+
+      // 清除对应仓库和issue的评论缓存，确保下次加载时获取最新数据
+      try {
+        await clearCommentCache(repopath, number);
+      } catch (cacheError) {
+        console.warn('清除评论缓存失败:', cacheError);
+      }
 
       // 通知父组件评论已添加
       if (onCommentAdded) {

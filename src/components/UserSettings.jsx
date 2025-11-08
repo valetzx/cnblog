@@ -397,8 +397,14 @@ const SimpleSettings = ({ onClose }) => {
             }} className="mr-2">
               用户主页
             </Button>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="mr-2">
               退出登录
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => {
+              if (onClose) onClose();
+              navigate('/cloudsync');
+            }} className="mr-2">
+              云同步
             </Button>
           </div>
         ) : (

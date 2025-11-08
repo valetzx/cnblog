@@ -1,4 +1,4 @@
-import { HomeIcon, FileTextIcon, SettingsIcon, Compass, Link, Globe, Pyramid as Panorama, Film, Database, UserIcon, Swords } from 'lucide-react'
+import { HomeIcon, FileTextIcon, SettingsIcon, Compass, Link, Globe, Pyramid as Panorama, Film, Database, UserIcon, Swords, ClipboardList, ImageIcon } from 'lucide-react'
 import Index from "./pages/Index.jsx";
 import Commit from "./pages/Commit.jsx";
 import Settings from "./pages/Settings.jsx";
@@ -14,7 +14,9 @@ import Repo from "./pages/Repo.jsx";
 import Mission from "./pages/Mission.jsx";
 import AiBattle from "./pages/AiBattle.jsx";
 import RoleAssignment from "./pages/RoleAssignment.jsx";
-
+import JobPlan from "./pages/JobPlan.jsx";
+import Sitemap from "./pages/Sitemap.jsx";
+import CnbOrigin from "@/ptools/cnbOrigin.jsx";
 /**
  * Central place for defining the navigation items. Used for navigation components and routing.
  */
@@ -24,6 +26,12 @@ export const navItems = [
     to: "/",
     icon: <HomeIcon className="h-4 w-4" />,
     page: <Index />,
+  },
+  {
+    title: "Sitemap",
+    to: "/sitemap",
+    icon: <FileTextIcon className="h-4 w-4" />,
+    page: <Sitemap />,
   },
   {
     title: "Ideas",
@@ -36,6 +44,12 @@ export const navItems = [
     to: "/commit",
     icon: <FileTextIcon className="h-4 w-4" />,
     page: <Commit />,
+  },
+  {
+    title: "任务拆解",
+    to: "/jobplan",
+    icon: <ClipboardList className="h-4 w-4" />,
+    page: <JobPlan />,
   },
   {
     title: "Settings",
@@ -120,5 +134,11 @@ export const navItems = [
     to: "/localstorage",
     icon: <Database className="h-4 w-4" />,
     page: <LocalStorage />,
+  },
+  {
+    title: "CNB Origin",
+    to: "/cnbraw/*",
+    icon: <ImageIcon className="h-4 w-4" />,
+    page: <CnbOrigin />,
   },
 ];

@@ -3,15 +3,15 @@ import { Card, CardContent } from '@/components/ui/card';
 
 // 特定ID对应的图片URL映射
 const specialArticleImages = {
-  1: 'https://m.wbiao.cn/mallapi/wechat/picReverseUrl?url=https://cnb.cool/valetzx/ai/img/-/git/raw/main/4.png',
-  2: 'https://m.wbiao.cn/mallapi/wechat/picReverseUrl?url=https://cnb.cool/valetzx/ai/img/-/git/raw/main/5.png'
+  1: 'https://cdn.jsdmirror.com/cnb/valetzx/ai/img/-/git/raw/main/4.png',
+  2: 'https://cdn.jsdmirror.com/cnb/valetzx/ai/img/-/git/raw/main/5.png'
 };
 
 const defaultPinnedArticles = [
   {
     id: 1,
-    title: '祝1024程序员节日快乐',
-    link: 'https://cnb.hsred.cn',
+    title: '点我进行Ai对战小游戏',
+    link: '/#/start',
   },
   {
     id: 2,

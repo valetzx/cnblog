@@ -109,27 +109,27 @@ const InfoRenderer = ({
   // Markdown 渲染组件配置
   const markdownComponents = {
     h1: ({node, ...props}) => {
-      const id = props.children.toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
+      const id = (props.children || '').toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
       return <h1 id={id} className="text-2xl font-bold mt-6 mb-4 text-gray-800 dark:text-gray-100 break-words" {...props} />;
     },
     h2: ({node, ...props}) => {
-      const id = props.children.toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
+      const id = (props.children || '').toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
       return <h2 id={id} className="text-xl font-bold mt-5 mb-3 text-gray-800 dark:text-gray-100 break-words" {...props} />;
     },
     h3: ({node, ...props}) => {
-      const id = props.children.toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
+      const id = (props.children || '').toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
       return <h3 id={id} className="text-lg font-bold mt-4 mb-2 text-gray-800 dark:text-gray-100 break-words" {...props} />;
     },
     h4: ({node, ...props}) => {
-      const id = props.children.toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
+      const id = (props.children || '').toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
       return <h4 id={id} className="text-base font-bold mt-3 mb-2 text-gray-800 dark:text-gray-100 break-words" {...props} />;
     },
     h5: ({node, ...props}) => {
-      const id = props.children.toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
+      const id = (props.children || '').toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
       return <h5 id={id} className="text-sm font-bold mt-2 mb-1 text-gray-800 dark:text-gray-100 break-words" {...props} />;
     },
     h6: ({node, ...props}) => {
-      const id = props.children.toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
+      const id = (props.children || '').toString().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-');
       return <h6 id={id} className="text-xs font-bold mt-2 mb-1 text-gray-800 dark:text-gray-100 break-words" {...props} />;
     },
     p: ({node, ...props}) => <p className="mb-3 leading-relaxed text-gray-700 dark:text-gray-300 break-words" {...props} />,
@@ -158,7 +158,7 @@ const InfoRenderer = ({
     <div className="pb-4">
       <div className="max-w-5xl mx-auto">
         {/* 标题和内容一体化区域 */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
+        <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-gray-200 dark:border-none">
           {/* 标题背景区域 */}
           {titleBackgroundImage && (
             <div className="relative min-h-64 md:min-h-80 overflow-hidden">

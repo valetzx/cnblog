@@ -10,6 +10,7 @@ import { Viewer } from '@photo-sphere-viewer/core';
 import { MarkersPlugin } from '@photo-sphere-viewer/markers-plugin';
 import { GyroscopePlugin } from '@photo-sphere-viewer/gyroscope-plugin';
 import '@photo-sphere-viewer/core/index.css';
+import { LoadingSpinner } from '@/fetchPage/LoadingSpinner';
 
 const OverallView = () => {
   const { url } = useParams();
@@ -197,7 +198,7 @@ const OverallView = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+        <LoadingSpinner />
       </div>
     );
   }

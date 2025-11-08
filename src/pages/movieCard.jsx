@@ -127,21 +127,24 @@ const MovieCard = () => {
   return (
     <div className="break-inside-avoid">
       <Card
-        className="w-full cursor-pointer hover:shadow-lg transition-shadow"
+        className="w-full cursor-pointer hover:shadow-lg transition-shadow flex flex-col h-full"
         onClick={() => setIsDialogOpen(true)}
       >
-        <CardContent className="p-0">
-          <img
-            src={movieData.mov_pic}
-            alt={movieData.mov_title}
-            className="w-full h-auto rounded-t-lg object-cover"
-          />
-          <div className="p-6">
-            <h2 className="text-xl font-bold">{movieData.mov_title}</h2>
-            <p className="whitespace-pre-line mb-2">{movieData.mov_text}</p>
-            <div className="flex items-center justify-between mt-4">
+        <CardContent className="p-0 flex flex-col flex-grow">
+          <div className="relative overflow-hidden" style={{ paddingBottom: '150%' }}>
+            <img
+              src={movieData.mov_pic}
+              alt={movieData.mov_title}
+              className="absolute inset-0 w-full h-full object-cover rounded-t-lg"
+              loading="lazy"
+            />
+          </div>
+          <div className="p-4 flex flex-col flex-grow">
+            <h2 className="text-lg font-bold line-clamp-2">{movieData.mov_title}</h2>
+            <p className="whitespace-pre-line text-sm mb-2 line-clamp-3 flex-grow">{movieData.mov_text}</p>
+            <div className="flex items-center justify-between mt-3">
               <span className="inline-block bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-md">电影</span>
-              <a href="https://www.cikeee.cc/" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 hover:text-gray-700">来自此刻电影</a>
+              <a href="https://www.cikeee.cc/" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 hover:text-[#838EF8]">来自此刻电影</a>
             </div>
           </div>
         </CardContent>

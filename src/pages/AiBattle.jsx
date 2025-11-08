@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { queryAiKnowledge } from '../cnbAipvp/aiQuery';
-import { aiBattleReply } from '../cnbAipvp/aiReply';
+import { queryAiKnowledge } from '@/cnbAipvp/aiQuery';
+import { aiBattleReply } from '@/cnbAipvp/aiReply';
 import { Swords } from 'lucide-react';
 import MarkdownMessage from '@/components/MarkdownMessage';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const AiBattle = () => {
   const navigate = useNavigate();
@@ -18,13 +19,21 @@ const AiBattle = () => {
   const [isBattleStarted, setIsBattleStarted] = useState(false);
   const [isBattlePaused, setIsBattlePaused] = useState(false);
   const [currentRound, setCurrentRound] = useState(0);
+  const [maxRounds, setMaxRounds] = useState(3); // 默认3轮
   const [currentSpeakerIndex, setCurrentSpeakerIndex] = useState(0);
   const [debateMessages, setDebateMessages] = useState([]);
   const [assignedRoles, setAssignedRoles] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
+  const [isBattleFinished, setIsBattleFinished] = useState(false);
+  // 场外求助状态
+  const [showUserInputModal, setShowUserInputModal] = useState(false);
+  const [userInputSide, setUserInputSide] = useState('pro'); // 默认正方
+  const [userInputContent, setUserInputContent] = useState('');
+  const [hasHandledUserInput, setHasHandledUserInput] = useState(false);
   // 新增：缓存固定的发言顺序（startBattle 时构建一次）
   const [speakerOrder, setSpeakerOrder] = useState([]);
+  const animatedMessagesRef = useRef(new Set());
 
   const messagesEndRef = useRef(null);
 
@@ -40,9 +49,10 @@ const AiBattle = () => {
   // 解析角色并构建固定发言顺序
   useEffect(() => {
     if (location.state) {
-      const { repopath: rp, userTopic: ut } = location.state;
+      const { repopath: rp, userTopic: ut, maxRounds: mr } = location.state;
       if (rp) setRepopath(rp);
       if (ut) setUserTopic(ut);
+      if (mr) setMaxRounds(mr);
     }
 
     const assignmentStr = localStorage.getItem('assignRoles');
@@ -80,24 +90,40 @@ const AiBattle = () => {
             order.push(sortedCon[i]);
           }
           setSpeakerOrder(order);
+
+          // 检查是否满足自动启动条件
+          const currentRepopath = repopath || (location.state?.repopath || '');
+          const currentUserTopic = userTopic || (location.state?.userTopic || '');
+
+          if (currentRepopath && currentUserTopic && !isBattleStarted && !isLoading) {
+            const timer = setTimeout(() => {
+              startBattle();
+            }, 500);
+            return () => clearTimeout(timer);
+          }
         }
       } catch (error) {
         console.error('解析角色分配信息失败:', error);
       }
     }
-  }, [location.state]);
+  }, [location.state, repopath, userTopic]);
 
   // 新增：监听索引/轮次变化，自动调用下一个发言人（解决异步更新问题）
   useEffect(() => {
-    if (!isBattleStarted || isBattlePaused || currentRound >= 3 || isRequesting) return;
+    if (!isBattleStarted || isBattlePaused || currentRound >= maxRounds || isRequesting || isBattleFinished) return;
     // 排除初始状态（currentSpeakerIndex=0 且无消息时，已在 startBattle 调用过）
     if (debateMessages.length === 0 && currentSpeakerIndex === 0) return;
+    if (hasHandledUserInput) return;
+    if (currentSpeakerIndex === 0 && currentRound > 0 && debateMessages.length > 0) {
+      setShowUserInputModal(true);
+      return;
+    }
     // 延迟 2 秒调用（保持发言间隔）
     const timer = setTimeout(() => {
       nextSpeaker();
     }, 2000);
     return () => clearTimeout(timer);
-  }, [currentSpeakerIndex, currentRound, isBattleStarted, isBattlePaused, isRequesting]);
+  }, [currentSpeakerIndex, currentRound, isBattleStarted, isBattlePaused, isRequesting, isBattleFinished, debateMessages.length, hasHandledUserInput]);
 
   const startBattle = async () => {
     if (!repopath || !userTopic || !assignedRoles || speakerOrder.length === 0) {
@@ -145,11 +171,110 @@ const AiBattle = () => {
     setCurrentSpeakerIndex(0);
     setDebateMessages([]);
     setSpeakerOrder([]);
+    setIsBattleFinished(false); 
+    setHasHandledUserInput(false);
+    animatedMessagesRef.current.clear();
+  };
+
+  // 获取辩论历史记录
+  const getHistory = () => {
+    try {
+      const history = localStorage.getItem('aiBattleHistory');
+      return history ? JSON.parse(history) : [];
+    } catch (error) {
+      console.error('获取历史记录失败:', error);
+      return [];
+    }
+  };
+
+  // 保存用户发言到历史记录
+  const saveUserInputToHistory = (side, content) => {
+    try {
+      const existingHistory = getHistory();
+      const newEntry = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        side,
+        roleName: '场外用户',
+        content,
+        time_taken: 0
+      };
+
+      const updatedHistory = [...existingHistory, newEntry];
+      localStorage.setItem('aiBattleHistory', JSON.stringify(updatedHistory));
+      return newEntry;
+    } catch (error) {
+      console.error('保存用户发言失败:', error);
+      return null;
+    }
+  };
+
+  // 处理用户场外发言
+  const handleUserInputSubmit = () => {
+    if (!userInputContent.trim()) {
+      alert('请输入发言内容');
+      return;
+    }
+
+    // 保存到历史记录
+    const userMessage = saveUserInputToHistory(userInputSide, userInputContent);
+
+    if (userMessage) {
+      // 添加到辩论消息中显示
+      const newMessage = {
+        id: userMessage.id,
+        content: userMessage.content,
+        speaker: '场外用户',
+        side: userInputSide,
+        round: currentRound + 1,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setDebateMessages(prev => [...prev, newMessage]);
+    }
+
+    // 关闭弹窗并清空输入
+    setShowUserInputModal(false);
+    setUserInputContent('');
+    setHasHandledUserInput(true);
+
+    // 直接更新轮次和发言人索引，避免触发useEffect
+    const nextRound = currentRound + 1;
+    if (nextRound >= maxRounds) {
+      setIsBattleFinished(true);
+    } else {
+      setCurrentRound(nextRound);
+      setCurrentSpeakerIndex(0);
+      // 延迟调用nextSpeaker开始新一轮
+      setTimeout(() => {
+        nextSpeaker();
+      }, 1000);
+    }
+  };
+
+  // 取消用户输入
+  const handleUserInputCancel = () => {
+    setShowUserInputModal(false);
+    setUserInputContent('');
+    // 标记已经处理过场外求助
+    setHasHandledUserInput(true);
+
+    // 直接更新轮次和发言人索引，避免触发useEffect
+    const nextRound = currentRound + 1;
+    if (nextRound >= maxRounds) {
+      setIsBattleFinished(true);
+    } else {
+      setCurrentRound(nextRound);
+      setCurrentSpeakerIndex(0);
+      // 延迟调用nextSpeaker开始新一轮
+      setTimeout(() => {
+        nextSpeaker();
+      }, 1000);
+    }
   };
 
   // 核心修复：nextSpeaker 仅负责当前发言人逻辑，下一轮通过 useEffect 触发
   const nextSpeaker = async () => {
-    if (isBattlePaused || currentRound >= 3 || isRequesting) return;
+    if (isBattlePaused || currentRound >= maxRounds || isRequesting) return;
     setIsRequesting(true);
 
     // 直接使用缓存的 speakerOrder（无需重复构建）
@@ -193,9 +318,10 @@ const AiBattle = () => {
       // 一轮结束（10个发言人）
       if (nextIndex >= speakerOrder.length) {
         nextRound = currentRound + 1;
-        if (nextRound >= 3) {
+        if (nextRound >= maxRounds) {
           setIsRequesting(false);
-          return; // 辩论结束
+          setIsBattleFinished(true); // 标记辩论结束
+          return;
         }
       }
 
@@ -215,8 +341,9 @@ const AiBattle = () => {
 
       if (nextIndex >= speakerOrder.length) {
         nextRound = currentRound + 1;
-        if (nextRound >= 3) {
+        if (nextRound >= maxRounds) {
           setIsRequesting(false);
+          setIsBattleFinished(true); // 标记辩论结束
           return;
         }
       }
@@ -236,9 +363,6 @@ const AiBattle = () => {
 
   // 标签定义（保持不变）
   const tags = [
-    { id: 'repopath', label: repopath || '知识库路径' },
-    { id: 'mode', label: '5v5模式' },
-    { id: 'userTopic', label: userTopic || '辩论主题' },
     {
       id: 'start',
       label: isLoading ? '准备中...' : '开始辩论',
@@ -248,12 +372,15 @@ const AiBattle = () => {
         ? "bg-gray-400 cursor-not-allowed text-white"
         : "bg-green-500 hover:bg-green-600 text-white"
     },
+    { id: 'repopath', label: repopath || '知识库路径' },
+    { id: 'mode', label: '5v5模式' },
+    { id: 'userTopic', label: userTopic || '辩论主题' },
     ...(isBattleStarted ? [
       {
         id: 'pause',
         label: isBattlePaused ? '继续' : '暂停',
         onClick: togglePauseBattle,
-        className: "bg-yellow-500 hover:bg-yellow-600 text-white"
+        className: isBattlePaused ? "bg-green-500 hover:bg-green-600 text-white" : "bg-yellow-500 hover:bg-yellow-600 text-white"
       },
       {
         id: 'reset',
@@ -268,8 +395,13 @@ const AiBattle = () => {
 
   // 消息组件（保持不变）
   const DebateMessage = ({ message }) => {
-    const [hasAnimated, setHasAnimated] = useState(false);
-    useEffect(() => setHasAnimated(true), []);
+    const [hasAnimated, setHasAnimated] = useState(animatedMessagesRef.current.has(message.id));
+    useEffect(() => {
+      if (!animatedMessagesRef.current.has(message.id)) {
+        animatedMessagesRef.current.add(message.id);
+        setHasAnimated(true);
+      }
+    }, [message.id]);
 
     return (
       <div className={`flex ${message.side === 'pro' ? 'justify-start' : 'justify-end'} mb-4`}>
@@ -290,7 +422,7 @@ const AiBattle = () => {
 
   return (
     <div className="min-h-screen p-2 sm:p-4 pb-10">
-      <div className="mx-auto max-w-6xl">
+      <div className="">
         <div className="mb-4 w-full overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
           <div className="flex space-x-2 min-w-max">
             {tags.map((tag) => (
@@ -313,8 +445,8 @@ const AiBattle = () => {
           {debateMessages.length === 0 ? (
             <div className="text-center text-gray-500 py-20">
               <Swords size={48} className="mx-auto mb-4 opacity-50" />
-              <p>辩论尚未开始</p>
-              <p className="text-sm mt-2">请点击"开始辩论"按钮启动5v5 AI对战</p>
+              <p>战场准备中</p>
+              <p className="text-sm mt-2">如果未自动开始，请检查论题及角色是否完整</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -326,6 +458,73 @@ const AiBattle = () => {
           )}
         </div>
       </div>
+
+      {/* 场外求助弹窗 */}
+      {showUserInputModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">场外求助</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              第 {currentRound + 1} 轮辩论结束，请选择阵营并发言
+            </p>
+
+            <div className="space-y-4">
+              {/* 阵营选择 */}
+              <div>
+                <label className="block text-sm font-medium mb-2">选择阵营</label>
+                <Tabs
+                  value={userInputSide}
+                  onValueChange={setUserInputSide}
+                  className="w-full"
+                >
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger
+                      value="pro"
+                      className="data-[state=active]:bg-orange-500 data-[state=active]:text-white"
+                    >
+                      正方
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="con"
+                      className="data-[state=active]:bg-purple-500 data-[state=active]:text-white"
+                    >
+                      反方
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              {/* 发言内容 */}
+              <div>
+                <label className="block text-sm font-medium mb-2">发言内容</label>
+                <textarea
+                  value={userInputContent}
+                  onChange={(e) => setUserInputContent(e.target.value)}
+                  placeholder="请输入您的发言内容..."
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md resize-none dark:bg-slate-700 dark:text-white"
+                  rows={4}
+                />
+              </div>
+
+              {/* 操作按钮 */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleUserInputCancel}
+                  className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                >
+                  跳过
+                </button>
+                <button
+                  onClick={handleUserInputSubmit}
+                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                >
+                  发送
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

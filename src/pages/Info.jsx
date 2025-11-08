@@ -494,7 +494,7 @@ const Info = () => {
             comments={cards}
             sortOrder={sortOrder}
             setSortOrder={setSortOrder}
-            repopath={issue.repopath}
+            repopath={repopath}
             number={issue.number}
             onCommentAdded={handleCommentAdded}
             onImageClick={handleImageClick}

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Copy, Trash2, RefreshCw, Search } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
+import CnbLogo from '@/cnbUtils/cnbLogo';
 
 const LocalStorage = () => {
   const [storageData, setStorageData] = useState({});
@@ -164,6 +165,62 @@ const LocalStorage = () => {
             <p className="text-gray-500">没有找到匹配的数据</p>
           </div>
         )}
+
+        {/* CNB Logo动画演示 */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>CNB Logo动画演示</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* 普通Logo */}
+              <div>
+                <Label className="mb-2 block">普通Logo</Label>
+                <div className="flex items-center space-x-4">
+                  <CnbLogo width="48px" height="48px" colorScheme="orange" />
+                  <CnbLogo width="48px" height="48px" colorScheme="auto" />
+                  <CnbLogo width="48px" height="48px" enableHoverRotation={false}  colorScheme="purple" />
+                </div>
+              </div>
+
+              {/* 循环动画 */}
+              <div>
+                <Label className="mb-2 block">循环动画</Label>
+                <div className="flex items-center space-x-4">
+                  <CnbLogo
+                    width="48px"
+                    height="48px"
+                    loadingAnimation={true}
+                    animationType="draw"
+                    loopAnimation={true}
+                    enableHoverRotation={false}
+                    enableColorToggle={true}
+                  />
+                  <CnbLogo
+                    width="32px"
+                    height="32px"
+                    colorScheme="orange"
+                    loadingAnimation={true}
+                    animationType="fade"
+                    loopAnimation={true}
+                    enableHoverRotation={false}
+                    enableColorToggle={false}
+                  />
+                  <CnbLogo
+                    width="64px"
+                    height="64px"
+                    colorScheme="orange"
+                    loadingAnimation={true}
+                    animationType="draw"
+                    loopAnimation={true}
+                    enableHoverRotation={false}
+                    enableColorToggle={false}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 通知测试按钮区域 */}
         <Card className="mt-8">

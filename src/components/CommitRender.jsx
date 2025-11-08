@@ -111,7 +111,7 @@ const CommitRender = ({
 
   return (
     <div className="max-w-5xl mx-auto pb-4">
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-200 dark:border-slate-700">
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-200 dark:border-none">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center">
             评论

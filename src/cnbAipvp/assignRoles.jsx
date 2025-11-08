@@ -8,10 +8,10 @@ import { loadRoles, getRoleDetail } from './loadRoles';
  * @param {string} rolePool - 角色池路径
  * @returns {Promise<Object>} 分配结果，包含正方和反方角色列表
  */
-export async function assignRoles(mode = 'random', selectedRoles = [], rolePool = 'wss/knowledge/battle') {
+export async function assignRoles(mode = 'random', selectedRoles = [], rolePool = 'wss/knowledge/battle', preloadedRoles = null) {
   try {
-    // 1. 加载所有可用角色
-    const allRoles = await loadRoles(rolePool);
+    // 1. 加载所有可用角色（使用预加载的角色或重新加载）
+    const allRoles = preloadedRoles || await loadRoles(rolePool);
 
     if (allRoles.length < 10) {
       throw new Error(`可用角色数量不足，需要至少10个角色，当前只有 ${allRoles.length} 个`);
@@ -100,7 +100,7 @@ export function useRoleAssignment(rolePool = 'wss/knowledge/battle') {
   const assign = async (mode = 'random', selectedRoles = []) => {
     try {
       setLoading(true);
-      const result = await assignRoles(mode, selectedRoles, rolePool);
+      const result = await assignRoles(mode, selectedRoles, rolePool, roles);
       setAssignedRoles(result);
       setError(null);
 

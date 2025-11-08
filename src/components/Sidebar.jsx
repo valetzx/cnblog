@@ -1,7 +1,7 @@
 import SettingsPage from '@/pages/Settings';
 import UserSettings from '@/components/UserSettings';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { SquarePlus, Home, Compass, Settings, Swords } from 'lucide-react';
+import { SquarePlus, Home, Compass, Settings, Swords, Archive } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { DialogContent, DialogTitle, Dialog, DialogHeader, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getUserInfo } from '@/cnbUtils/indexedDB';
 import { toast } from '@/components/ui/sonner';
 import useLoginStatus from '@/fetchPage/isLogin';
+import CnbLogo from '@/cnbUtils/cnbLogo';
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(true);
@@ -48,19 +49,20 @@ const Sidebar = () => {
     if (hasSeenAnnouncement !== 'never' && hasSeenAnnouncement !== today && !announcementDisplayedRef.current) {
       announcementDisplayedRef.current = true;
 
-      toast.info('祝大家1024程序员节日快乐 !!! » 点击下方按钮查收惊喜', {
-        duration: 30000,
+      toast.info('祝大家2026新年快乐！马到成功！马上发财！', {
+        duration: 10000,
         position: 'top-center',
         action: {
-          label: '领取 1024GPU 额度',
+          label: '确认',
           onClick: () => {
-            window.open('https://cnb.cool/cnb/feedback/-/issues/2284', '_blank');
-            localStorage.setItem('noteshowAt', '');
+            //window.open('', '_blank');
+            localStorage.setItem('noteshowAt', 'today');
             setAnnouncementShown(true);
+            toast.dismiss();
           }
         },
         cancel: {
-          label: '今日不再提示',
+          label: '取消',
           onClick: () => {
             const today = new Date().toDateString();
             localStorage.setItem('noteshowAt', today);
@@ -161,76 +163,99 @@ const Sidebar = () => {
       {/* 桌面端侧边栏 - 固定定位 */}
       <div className="hidden md:flex flex-col fixed top-0 left-0 h-screen bg-white dark:bg-card border-r border-gray-200 dark:border-slate-700 transition-all duration-300 z-40"
            style={{ width: collapsed ? '64px' : '256px' }}>
-        {/* 顶部内容 */}
-        <div className="flex-1 p-4">
-          {/* Logo */}
-          <div className="mb-2">
-            <div className="flex items-center justify-center">
-              <div className="flex items-center justify-center p-3 rounded-lg transition-colors">
-                <svg
-                  id="logo-monochrome"
-                  style={{ width: "32px", height: "32px" }}
-                  className=""
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                >
-                  <g fill="none">
-                    <path
-                      d="M11.5286 1.87149C11.5769 1.73005 11.5356 1.5733 11.4233 1.47452C11.0472 1.14247 10.0965 0.443125 8.66911 0.339708C7.07054 0.223769 6.08089 0.652279 5.58096 0.969951C5.36531 1.10676 5.35326 1.41748 5.55499 1.57422L9.62723 4.73936C9.98617 5.01807 10.5125 4.8604 10.6591 4.43003L11.5286 1.87149Z"
-                      fill="currentColor"
-                    ></path>
-                    <path
-                      d="M1.49017 11.2664C1.32368 11.3781 1.24855 11.584 1.30235 11.7774C1.45724 12.3339 1.91868 13.4919 3.22833 14.5456C4.53797 15.5992 6.08738 15.7128 6.74962 15.6966C6.94764 15.692 7.12016 15.5617 7.17998 15.3724L9.79046 7.11064C9.97875 6.51425 9.31048 6.01386 8.79154 6.3626L1.49017 11.2664Z"
-                      fill="currentColor"
-                    ></path>
-                    <path
-                      d="M3.39813 2.54827C3.27013 2.49773 3.12683 2.50607 3.00579 2.57193C2.52256 2.83488 1.28526 3.64506 0.647135 5.30947C0.154627 6.59222 0.328071 8.01085 0.463488 8.70463C0.508009 8.9314 0.747306 9.06218 0.962489 8.97824L8.79485 5.92024C9.35414 5.70181 9.35646 4.91111 8.7981 4.6899L3.39813 2.54827Z"
-                      fill="currentColor"
-                    ></path>
-                    <path
-                      d="M15.0167 8.46843C15.243 8.62194 15.5528 8.48652 15.5922 8.21569C15.6961 7.49872 15.7861 6.25076 15.371 5.30933C14.8177 4.05487 13.8786 3.28133 13.433 2.9669C13.292 2.86766 13.1019 2.87786 12.9725 2.99241L10.9959 4.74541C10.6732 5.03154 10.7066 5.54492 11.0636 5.78746L15.0167 8.46936V8.46843Z"
-                      fill="currentColor"
-                    ></path>
-                    <path
-                      d="M9.49413 15.1604C9.47372 15.3937 9.67128 15.5866 9.90409 15.5616C10.6531 15.4813 12.1918 15.1841 13.3447 14.0827C14.467 13.0109 14.832 11.7384 14.9382 11.2319C14.9669 11.0951 14.9326 10.9528 14.8445 10.8442L11.3886 6.57909C11.0143 6.11719 10.2681 6.34535 10.2162 6.93757L9.49366 15.1604H9.49413Z"
-                      fill="currentColor"
-                    ></path>
-                  </g>
-                </svg>
-              </div>            
+
+        {/* 可滚动区域 */}
+        <div className="flex-1 overflow-y-auto">
+          {/* 顶部内容 */}
+          <div className="p-4">
+            {/* Logo */}
+            <div className="mb-2">
+              <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center p-3 rounded-lg transition-colors">
+                  <CnbLogo colorScheme="auto" width="32px" height="32px" />
+                </div>
+              </div>
             </div>
-          </div>
           
-          {/* 导航项 */}
-          <nav className="space-y-2">
-            <Link 
-              to="/" 
-              className="flex items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <Home size={24} className={`flex-shrink-0 ${location.pathname === '/' ? 'text-[#838EF8]' : ''}`} />
-              {!collapsed && <span className="ml-3 whitespace-nowrap text-gray-800 dark:text-gray-200">主页</span>}
-            </Link>
+            {/* 导航项 */}
+            <nav className="space-y-2">
+              <Link
+                to="/"
+                className="flex items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <Home size={24} className={`flex-shrink-0 ${location.pathname === '/' ? 'text-[#838EF8]' : ''}`} />
+                {!collapsed && <span className="ml-3 whitespace-nowrap text-gray-800 dark:text-gray-200">主页</span>}
+              </Link>
             
-            <Link 
-              to="/user" 
-              className="flex items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <Compass size={24} className={`flex-shrink-0 ${location.pathname === '/user' ? 'text-[#838EF8]' : ''}`} />
-              {!collapsed && <span className="ml-3 whitespace-nowrap text-gray-800 dark:text-gray-200">探索</span>}
-            </Link>
+              <Link
+                to="/user"
+                className="flex items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <Compass size={24} className={`flex-shrink-0 ${location.pathname === '/user' ? 'text-[#838EF8]' : ''}`} />
+                {!collapsed && <span className="ml-3 whitespace-nowrap text-gray-800 dark:text-gray-200">探索</span>}
+              </Link>
             
-            <Link 
-              to="/start" 
-              className="flex items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <Swords size={24} className={`flex-shrink-0 ${location.pathname === '/start' ? 'text-[#838EF8]' : ''}`} />
-              {!collapsed && <span className="ml-3 whitespace-nowrap text-gray-800 dark:text-gray-200">更多</span>}
-            </Link>
-          </nav>
+              <Link
+                to="/commit"
+                className="flex items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <Archive size={24} className={`flex-shrink-0 ${location.pathname === '/commit' || location.pathname === '/aibattle' || location.pathname === '/start' ? 'text-[#838EF8]' : ''}`} />
+                {!collapsed && <span className="ml-3 whitespace-nowrap text-gray-800 dark:text-gray-200">更多</span>}
+              </Link>
+            </nav>
+          </div>
+
+          {/* 底部信息 - 只在展开时显示，隐藏在按钮区域后方 */}
+          {!collapsed && (
+            <div className="relative min-h-[20vh]">
+              {/* 占位空间，确保有足够的滚动距离 */}
+              <div className="h-[75vh]"></div>
+
+              {/* 底部信息内容 - 绝对定位在按钮区域后方 */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+                <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                  {/* 1 */}
+                  <div className="flex justify-between items-center mb-1 px-8">
+                    <div className="font-medium">关于作者</div>
+                    <a href="https://cnb.cool/wss/apps/open-cnb" target="_blank" rel="noopener noreferrer" className="hover:text-[#838EF8] transition-colors">
+                      开源地址
+                    </a>
+                  </div>
+
+                  {/* 2 */}
+                  <div className="flex justify-between items-center mb-1 px-8">
+                    <div className="font-medium">友情链接</div>
+                    <a href="https://cnb.cool" target="_blank" rel="noopener noreferrer" className="hover:text-[#838EF8] transition-colors">
+                      官方站点
+                    </a>
+                  </div>
+
+                  {/* 4 */}
+                  <div className="flex justify-between items-center mb-1 px-8">
+                    <a href="https://cnb.nocode.host" target="_blank" rel="noopener noreferrer" className="hover:text-[#838EF8] transition-colors">
+                      跳转源站
+                    </a>
+                    <a href="/#/localstorage" rel="noopener noreferrer" className="hover:text-[#838EF8] transition-colors">
+                      储存工具
+                    </a>
+                  </div>
+
+                  {/* 3 */}
+                  <div className="flex justify-between items-center mb-1 px-8">
+                    <a href="https://cnb.nocode.host/#/info/1648/cnb/feedback" target="_blank" rel="noopener noreferrer" className="hover:text-[#838EF8] transition-colors">
+                      更新日志
+                    </a>
+                    <a href="/#/info/1648/cnb/feedback" rel="noopener noreferrer" className="hover:text-[#838EF8] transition-colors">
+                      项目反馈
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         
-        {/* 底部设置按钮 - 固定在底部 */}
+        {/* 底部按钮区域 - 固定在底部 */}
         <div className="p-4 border-t border-gray-200 dark:border-slate-700 mt-auto">
           <div className="relative">
             <button
@@ -350,10 +375,10 @@ const Sidebar = () => {
           </Link>
           
           <Link 
-            to="/start" 
+            to="/commit" 
             className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors min-w-[60px]"
           >
-            <Swords size={24} className={location.pathname === '/start' ? 'text-[#838EF8]' : ''} />
+            <Archive size={24} className={location.pathname === '/commit' || location.pathname === '/aibattle' || location.pathname === '/start' ? 'text-[#838EF8]' : ''} />
           </Link>
           
           <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
