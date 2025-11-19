@@ -146,9 +146,7 @@ const Commit = () => {
         localStorage.setItem('commitpageData', JSON.stringify(newCards));
       } else if (initialLoad) {
         setError('没有评论可加载');
-      } else {
-        setError('没有新的评论可加载');
-      }
+      } 
 
       setInitialLoad(false);
     } catch (err) {

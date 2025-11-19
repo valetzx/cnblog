@@ -265,3 +265,43 @@
 .animate-slide-in-right {
   animation: slideInRight 0.5s ease-out forwards;
 }
+
+/* 页面切换动画相关样式 */
+.route-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.route-next,
+.route-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+/* 确保动画容器不会影响布局 */
+.motion-div-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* 防止页面内容在动画期间闪烁 */
+.route-next > *,
+.route-back > * {
+  height: 100%;
+}
+
+/* 确保Layout组件在动画期间正确显示 */
+.layout-animated {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}

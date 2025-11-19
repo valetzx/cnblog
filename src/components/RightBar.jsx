@@ -1,7 +1,213 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { List, ChevronLeft, Pin, RefreshCw, Tag } from 'lucide-react';
+import { List, ChevronLeft, Pin, RefreshCw, Tag, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CnbLogo from '@/cnbUtils/cnbLogo';
+import { queryAiKnowledge } from '@/cnbAipvp/aiQuery';
+import aiSummary from '@/cnbAipvp/aiSummary';
+
+// 解读卡片组件
+const AnalysisCard = ({ repopath, issueTitle, issueBody }) => {
+  const [analysis, setAnalysis] = useState('');
+  const [displayedAnalysis, setDisplayedAnalysis] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showCursor, setShowCursor] = useState(true);
+
+  // 打字机效果
+  const typeWriterEffect = (text, speed = 30) => {
+    let currentIndex = 0;
+    let currentText = '';
+    let isCancelled = false;
+    setDisplayedAnalysis(text);
+    setDisplayedAnalysis('');
+
+    // 光标闪烁效果
+    const cursorInterval = setInterval(() => {
+      if (!isCancelled) {
+        setShowCursor(prev => !prev);
+      }
+    }, 500);
+
+    const type = () => {
+      if (isCancelled) return;
+
+      // 正向打字
+      if (currentIndex < text.length) {
+        currentText += text[currentIndex];
+        setDisplayedAnalysis(currentText);
+        currentIndex++;
+
+        // 使用固定延迟，避免随机性导致的闪烁
+        setTimeout(type, speed);
+      } else {
+        // 打字完成，停止光标闪烁
+        clearInterval(cursorInterval);
+        setIsTyping(false);
+        setShowCursor(false);
+      }
+    };
+
+    setIsTyping(true);
+    // 延迟一小段时间开始打字，确保布局稳定
+    setTimeout(type, 100);
+
+    // 清理函数
+    return () => {
+      isCancelled = true;
+      clearInterval(cursorInterval);
+    };
+  };
+
+  const generateAnalysis = async () => {
+    if (!repopath || !issueTitle || !issueBody) return;
+
+    setLoading(true);
+    setError(null);
+    setDisplayedAnalysis('');
+    setAnalysis('');
+    setIsTyping(false);
+    setShowCursor(false);
+
+    try {
+      let knowledgeContent = '';
+      try {
+        knowledgeContent = await queryAiKnowledge(repopath, issueTitle);
+      } catch (err) {
+        console.warn('知识库查询失败:', err);
+      }
+
+      const prompt = `
+[文章标题]
+${issueTitle}
+
+[知识库]
+${knowledgeContent}
+
+[文章内容]
+${issueBody}
+
+请根据以上内容对文章进行一个简单的分析和总结，也可以回答文章中的问题，回答尽量口语化，不要出现Markdown等格式，回答不超过200字
+`;
+
+      // 第三步：调用AI总结
+      const result = await aiSummary(prompt);
+      setAnalysis(result.content);
+
+      // 启动打字机效果
+      typeWriterEffect(result.content);
+
+    } catch (err) {
+      console.error('生成解读失败:', err);
+      setError('生成解读失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 当文章内容变化时自动生成解读
+  useEffect(() => {
+    if (repopath && issueTitle && issueBody) {
+      generateAnalysis();
+    }
+  }, [repopath, issueTitle, issueBody]);
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 mb-2">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <Sparkles size={16} className="text-indigo-500 mr-2" />
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200">解读</h3>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <div className="animate-pulse flex space-x-4">
+            <div className="flex-1 space-y-2 py-1">
+              <div className="h-4 bg-gray-200 dark:bg-slate-600 rounded"></div>
+              <div className="h-4 bg-gray-200 dark:bg-slate-600 rounded w-5/6"></div>
+              <div className="h-4 bg-gray-200 dark:bg-slate-600 rounded w-4/6"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 mb-2">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <Sparkles size={16} className="text-indigo-500 mr-2" />
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200">解读</h3>
+          </div>
+          <button
+            onClick={generateAnalysis}
+            className="p-1 text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-500 transition-colors"
+            title="重新生成"
+          >
+            <RefreshCw size={16} />
+          </button>
+        </div>
+        <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+          <p className="text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!analysis && !isTyping) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 mb-2">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <Sparkles size={16} className="text-indigo-500 mr-2" />
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200">解读</h3>
+          </div>
+          <button
+            onClick={generateAnalysis}
+            className="p-1 text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-500 transition-colors"
+            title="生成解读"
+          >
+            <RefreshCw size={16} />
+          </button>
+        </div>
+        <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+          <p className="text-sm">点击生成解读</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 mb-2">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center">
+          <Sparkles size={16} className="text-indigo-500 mr-2" />
+          <h3 className="font-semibold text-gray-800 dark:text-gray-200">解读</h3>
+        </div>
+        <button
+          onClick={generateAnalysis}
+          className="p-1 text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-500 transition-colors"
+          title="重新生成"
+        >
+          <RefreshCw size={16} />
+        </button>
+      </div>
+      <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed min-h-20 relative">
+        {displayedAnalysis}
+        {showCursor && (
+          <span className="inline-block w-0.5 h-4 bg-indigo-500 ml-0.5 animate-pulse"></span>
+        )}
+        {isTyping && (
+          <div className="absolute bottom-0 right-0 text-xs text-gray-400">
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // 目录项组件
 const TocItem = ({ level, text, onClick, isActive }) => {
@@ -85,7 +291,7 @@ const TableOfContents = ({ headings, onHeadingClick, onPinClick, isCollapsed }) 
           className={`p-1 transition-colors ${
             !isCollapsed
               ? 'text-indigo-500'
-              : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              : 'text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-500'
           }`}
         >
           <Pin size={16} className={`transition-transform ${isCollapsed ? '' : 'rotate-45'}`} />
@@ -396,7 +602,7 @@ const IssueCard = () => {
         {/* 刷新按钮 */}
         <button
           onClick={refreshRandomTitle}
-          className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          className="p-1 text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-500 transition-colors"
           title="刷新标签"
         >
           <RefreshCw
@@ -425,19 +631,43 @@ const IssueCard = () => {
 const RightBar = ({
   headings = [],
   onHeadingClick,
-  children
+  children,
+  onCollapseChange,
+  repopath,
+  issueTitle,
+  issueBody,
+  isCollapsed = false
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const rightBarRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
+
+  // 从localStorage恢复状态
+  useEffect(() => {
+    const savedState = localStorage.getItem('rightbarPin');
+    if (savedState !== null) {
+      const savedCollapsed = JSON.parse(savedState);
+      if (onCollapseChange) {
+        onCollapseChange(savedCollapsed);
+      }
+    }
+  }, [onCollapseChange]);
+
+  // 保存状态到localStorage
+  useEffect(() => {
+    localStorage.setItem('rightbarPin', JSON.stringify(isCollapsed));
+  }, [isCollapsed]);
 
   // 检测窗口宽度，只在较小屏幕时自动隐藏
   useEffect(() => {
     const checkWindowSize = () => {
       const windowWidth = window.innerWidth;
       // 当窗口宽度小于1300px时自动隐藏右侧栏（更宽松的阈值）
-      setIsCollapsed(windowWidth < 1300);
+      if (windowWidth < 1300 && !isCollapsed) {
+        if (onCollapseChange) {
+          onCollapseChange(true);
+        }
+      }
     };
 
     // 初始检查
@@ -449,7 +679,21 @@ const RightBar = ({
     return () => {
       window.removeEventListener('resize', checkWindowSize);
     };
-  }, []);
+  }, [isCollapsed, onCollapseChange]);
+
+  // 处理折叠/展开
+  const handleToggleCollapse = () => {
+    if (onCollapseChange) {
+      onCollapseChange(!isCollapsed);
+    }
+  };
+
+  // 通知父组件折叠状态变化
+  useEffect(() => {
+    if (onCollapseChange) {
+      onCollapseChange(isCollapsed);
+    }
+  }, [isCollapsed, onCollapseChange]);
 
   // 处理鼠标进入右侧边缘
   const handleRightEdgeHover = () => {
@@ -513,11 +757,20 @@ const RightBar = ({
         onMouseEnter={handleRightBarEnter}
         onMouseLeave={handleMouseLeave}
       >
+        {/* 解读卡片 - 位于目录上方 */}
+        {repopath && issueTitle && issueBody && (
+          <AnalysisCard
+            repopath={repopath}
+            issueTitle={issueTitle}
+            issueBody={issueBody}
+          />
+        )}
+
         {/* 目录区域 */}
         <TableOfContents
           headings={headings}
           onHeadingClick={onHeadingClick}
-          onPinClick={() => setIsCollapsed(!isCollapsed)}
+          onPinClick={handleToggleCollapse}
           isCollapsed={isCollapsed}
         />
 

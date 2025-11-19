@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import CachedAvatar from '@/components/CachedAvatar';
 import AddCommit from '@/cnbRepos/addCommit';
 import { formatDate } from '@/cnbUtils/dateFormatter';
-import { User, Clock } from 'lucide-react';
+import { User, Clock, Copy } from 'lucide-react';
 import CommitRender from '@/components/CommitRender';
 import RandomBackground from '@/components/RandomBG';
 
@@ -147,7 +147,111 @@ const InfoRenderer = ({
       />
     ),
     code: ({node, ...props}) => <code className="bg-gray-100 px-1 py-0.5 rounded text-sm dark:bg-slate-700 break-all" {...props} />,
-    pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded-lg overflow-x-auto my-3 dark:bg-slate-700" {...props} />,
+    pre: ({node, ...props}) => {
+      const [copied, setCopied] = React.useState(false);
+      const copyCode = async (event) => {
+        let codeContent = '';
+
+        // 更可靠的代码内容提取方法
+        const extractCodeFromPre = (preElement) => {
+          // 尝试从 code 标签中获取内容
+          const codeElement = preElement.querySelector('code');
+          if (codeElement) {
+            return codeElement.textContent || '';
+          }
+
+          // 如果没有 code 标签，尝试从文本内容中获取
+          return preElement.textContent || '';
+        };
+
+        // 获取当前点击的 pre 元素（通过事件冒泡找到最近的 pre 元素）
+        const getCurrentPreElement = (event) => {
+          // 从按钮向上查找最近的 pre 元素
+          const button = event.currentTarget;
+          const preElement = button.closest('.relative').querySelector('pre');
+          return preElement;
+        };
+
+        // 获取当前点击的 pre 元素
+        const preElement = getCurrentPreElement(event);
+        if (preElement) {
+          codeContent = extractCodeFromPre(preElement);
+        } else {
+          // 备用方案：尝试从 props 中提取
+          if (props.children && props.children[0]) {
+            const firstChild = props.children[0];
+
+            if (typeof firstChild === 'string') {
+              codeContent = firstChild;
+            } else if (firstChild.props && firstChild.props.children) {
+              if (typeof firstChild.props.children === 'string') {
+                codeContent = firstChild.props.children;
+              } else if (Array.isArray(firstChild.props.children)) {
+                codeContent = firstChild.props.children
+                  .filter(child => typeof child === 'string')
+                  .join('');
+              }
+            }
+          }
+        }
+
+        // 首先尝试使用现代的 Clipboard API
+        try {
+          // 检查权限状态
+          const permissionStatus = await navigator.permissions.query({ name: 'clipboard-write' });
+
+          if (permissionStatus.state === 'granted' || permissionStatus.state === 'prompt') {
+            await navigator.clipboard.writeText(codeContent);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+            return;
+          } else {
+            throw new Error('Clipboard permission not granted');
+          }
+        } catch (err) {
+          // 降级方案：使用传统的 execCommand 方法
+          try {
+            const textArea = document.createElement('textarea');
+            textArea.value = codeContent;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.select();
+
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            if (successful) {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            } else {
+              throw new Error('execCommand failed');
+            }
+          } catch (fallbackErr) {
+            // 最终备用方案：提示用户手动复制
+            alert(`无法自动复制，请手动选择并复制以下内容：\n\n${codeContent}`);
+          }
+        }
+      };
+
+      return (
+        <div className="relative group">
+          <pre className="bg-gray-100 p-3 rounded-lg overflow-x-auto my-3 dark:bg-slate-700" {...props} />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-slate-600/80 hover:bg-white dark:hover:bg-slate-500"
+            onClick={copyCode}
+          >
+            {copied ? (
+              <span className="text-xs">已复制</span>
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        </div>
+      );
+    },
     blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-3 dark:border-slate-600 break-words" {...props} />,
     table: ({node, ...props}) => <table className="min-w-full border-collapse border border-gray-300 my-3 dark:border-slate-600" {...props} />,
     th: ({node, ...props}) => <th className="border border-gray-300 px-3 py-2 bg-gray-50 font-medium dark:border-slate-600 dark:bg-slate-700 break-words" {...props} />,
@@ -155,7 +259,7 @@ const InfoRenderer = ({
   };
 
   return (
-    <div className="pb-4">
+    <div className="pb-4 pt-4">
       <div className="max-w-5xl mx-auto">
         {/* 标题和内容一体化区域 */}
         <div className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-gray-200 dark:border-none">

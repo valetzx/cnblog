@@ -7,12 +7,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Copy, Trash2, RefreshCw, Search } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import CnbLogo from '@/cnbUtils/cnbLogo';
+import Scrollbars, { ScrollbarEvents } from '@/components/Scrollbars';
 
 const LocalStorage = () => {
   const [storageData, setStorageData] = useState({});
   const [searchKey, setSearchKey] = useState('');
   const [error, setError] = useState('');
   const [copiedKey, setCopiedKey] = useState('');
+  const [scrollbarClickCount, setScrollbarClickCount] = useState(0);
 
   // 加载本地存储数据
   const loadStorageData = () => {
@@ -42,7 +44,15 @@ const LocalStorage = () => {
   // 初始化加载数据
   useEffect(() => {
     loadStorageData();
-  }, []);
+
+    // 注册滚动条中心按钮点击事件监听器
+    const unsubscribe = ScrollbarEvents.onCenterButtonClick(() => {
+      setScrollbarClickCount(prev => prev + 1);
+      toast.success(`滚动条圆形按钮被点击了！ (总计: ${scrollbarClickCount + 1} 次)`);
+    });
+
+    return unsubscribe;
+  }, [scrollbarClickCount]);
 
   // 复制到剪贴板
   const copyToClipboard = (key, value) => {
@@ -85,6 +95,62 @@ const LocalStorage = () => {
   return (
     <div className="min-h-screen p-4 pb-10">
       <div className="mx-auto">
+        {/* 滚动条组件测试区域 */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>滚动条组件测试</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    圆形按钮点击次数: <span className="font-semibold">{scrollbarClickCount}</span>
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    在页面右侧可以看到滚动条，点击圆形按钮测试功能
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setScrollbarClickCount(0)}
+                >
+                  重置计数
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>使用方式1: Props方式</Label>
+                  <pre className="text-xs bg-gray-100 dark:bg-slate-800 p-2 rounded overflow-auto">
+{`<Scrollbars onCenterButtonClick={() => {
+  console.log('圆形按钮被点击了！');
+  // 执行自定义操作
+}} />`}
+                  </pre>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>使用方式2: 全局事件系统</Label>
+                  <pre className="text-xs bg-gray-100 dark:bg-slate-800 p-2 rounded overflow-auto">
+{`import { ScrollbarEvents } from '@/components/Scrollbars';
+
+useEffect(() => {
+  const unsubscribe = ScrollbarEvents.onCenterButtonClick(() => {
+    console.log('圆形按钮被点击了！');
+    // 执行自定义操作
+  });
+
+  return unsubscribe;
+}, []);`}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -120,6 +186,9 @@ const LocalStorage = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* 滚动条组件 */}
+        <Scrollbars />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredData.map(([key, value]) => (

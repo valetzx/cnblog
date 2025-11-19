@@ -8,6 +8,8 @@ export const useLoadMore = (settings, issues, setIssues, closedIssues, setClosed
   const [hasMore, setHasMore] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [maxCachedPage, setMaxCachedPage] = useState(0);
+  const [retryCount, setRetryCount] = useState(0); // 重试计数器
+  const [showExtendedLoading, setShowExtendedLoading] = useState(false);
 
   // 检查是否到达页面底部
   const checkScrollBottom = useCallback(() => {
@@ -31,6 +33,13 @@ export const useLoadMore = (settings, issues, setIssues, closedIssues, setClosed
       return 0;
     }
   }, [settings.baseRepo]);
+
+  // 计算当前加载超时时间
+  const getLoadingTimeout = useCallback(() => {
+    if (retryCount === 0) return 0; // 第一次不延迟
+    if (retryCount === 1) return 6000; // 第二次失败后延迟6秒
+    return 12000; // 第三次及以后失败后延迟12秒
+  }, [retryCount]);
 
   // 加载更多数据
   const loadMoreData = useCallback(async () => {
@@ -102,16 +111,40 @@ export const useLoadMore = (settings, issues, setIssues, closedIssues, setClosed
         setClosedIssues(prev => [...prev, ...newClosedIssues]);
         setAllIssues(prev => [...prev, ...newOpenIssues, ...newClosedIssues]);
         setCurrentPage(nextPage);
+        setRetryCount(0); // 重置重试计数器
+        setShowExtendedLoading(false); // 重置延长加载状态
       } else {
         // 没有更多数据
         setHasMore(false);
+        setRetryCount(0); // 重置重试计数器
+        setShowExtendedLoading(false); // 重置延长加载状态
       }
     } catch (error) {
-      // 加载更多数据失败
-    } finally {
-      setLoadingMore(false);
+      // 加载更多数据失败，增加重试计数
+      const newRetryCount = retryCount + 1;
+      setRetryCount(newRetryCount);
+
+      // 如果重试次数超过3次，停止加载
+      if (newRetryCount >= 3) {
+        setHasMore(false);
+        setShowExtendedLoading(false);
+      } else {
+        // 设置延长加载状态
+        setShowExtendedLoading(true);
+
+        // 设置超时后自动重置加载状态
+        const timeout = getLoadingTimeout();
+        if (timeout > 0) {
+          setTimeout(() => {
+            setLoadingMore(false);
+            setShowExtendedLoading(false);
+          }, timeout);
+        } else {
+          setLoadingMore(false);
+        }
+      }
     }
-  }, [loadingMore, hasMore, currentPage, settings, setIssues, setClosedIssues, setAllIssues, maxCachedPage]);
+  }, [loadingMore, hasMore, currentPage, settings, setIssues, setClosedIssues, setAllIssues, maxCachedPage, retryCount, getLoadingTimeout]);
 
   // 监听滚动事件
   useEffect(() => {
@@ -153,13 +186,15 @@ export const useLoadMore = (settings, issues, setIssues, closedIssues, setClosed
     setHasMore(true);
     setLoadingMore(false);
     setMaxCachedPage(0);
+    setRetryCount(0);
+    setShowExtendedLoading(false);
   }, [settings.baseRepo, settings.sizeNum]);
 
-  return { loadingMore, hasMore };
+  return { loadingMore: loadingMore || showExtendedLoading, hasMore, retryCount };
 };
 
 // 加载更多指示器组件
-export const LoadMoreIndicator = ({ loadingMore, hasMore }) => {
+export const LoadMoreIndicator = ({ loadingMore, hasMore, retryCount = 0 }) => {
   // 获取备案信息
   const beiAn = import.meta.env.VITE_BEI_AN;
 
@@ -167,7 +202,7 @@ export const LoadMoreIndicator = ({ loadingMore, hasMore }) => {
     // 如果没有更多内容，显示备案信息（如果存在）
     return (
       <div className="text-center py-4">
-        <div className="text-gray-500 mb-2">没有更多内容了</div>
+        <div className="text-gray-500 mb-2">刷新页面获取更多</div>
         {beiAn && (
           <a
             href="https://beian.miit.gov.cn/#/Integrated/recordQuery"
@@ -182,11 +217,18 @@ export const LoadMoreIndicator = ({ loadingMore, hasMore }) => {
     );
   }
 
+  // 根据重试次数显示不同的加载消息
+  const getLoadingMessage = () => {
+    if (retryCount === 0) return "加载中...";
+    if (retryCount === 1) return "正在重试加载 (6秒)...";
+    return "正在重试加载 (12秒)...";
+  };
+
   return (
     <div className="text-center py-4">
       {loadingMore ? (
-        <div className="flex items-center justify-center">
-          <LoadingSpinner />
+        <div className="flex flex-col items-center justify-center">
+          <LoadingSpinner message={getLoadingMessage()} />
         </div>
       ) : (
         <div className="text-gray-500">

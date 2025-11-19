@@ -16,6 +16,9 @@ const AddComment = ({ repopath, number, onCommentAdded }) => {
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 构建CNB官方评论链接
+  const cnbOfficialUrl = `https://cnb.cool/${repopath}/-/issues/${number}`;
+
   const handleSubmit = async () => {
     if (!commentText.trim()) {
       toast.error('评论内容不能为空');
@@ -94,20 +97,25 @@ const AddComment = ({ repopath, number, onCommentAdded }) => {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" className="ml-2 border-gray-300 dark:border-slate-500 hover:border-indigo-400 transition-colors">
-          新增评论
+          +
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto rounded-lg">
         <DialogHeader>
-          <DialogTitle>发表评论</DialogTitle>
+          <DialogTitle className="flex space-x-2">
+            <span>评论</span> 
+            <span
+              className="text-orange-500 hover:text-orange-600 text-sm"
+              onClick={() => window.open(cnbOfficialUrl, '_blank')}
+            >
+              或转到CNB官方评论
+            </span>
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <label htmlFor="comment" className="text-sm font-medium">
-              评论内容
-            </label>
             <Textarea
               id="comment"
               placeholder="请输入您的评论内容..."
@@ -126,12 +134,14 @@ const AddComment = ({ repopath, number, onCommentAdded }) => {
             >
               取消
             </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || !commentText.trim()}
-            >
-              {isSubmitting ? '发表中...' : '发表评论'}
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting || !commentText.trim()}
+              >
+                {isSubmitting ? '发表中...' : '发表评论'}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

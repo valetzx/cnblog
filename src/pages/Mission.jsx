@@ -17,12 +17,6 @@ const Mission = () => {
   const [missionData, setMissionData] = useState(null);
   const searchInputRef = useRef(null);
 
-  // 滚动相关状态
-  const [isScrolling, setIsScrolling] = useState(false);
-  const [scrollPosition, setScrollPosition] = useState(0);
-  const boardViewContainerRef = useRef(null);
-  const scrollThumbRef = useRef(null);
-
   // 获取missionPath - 使用通配符参数
   const missionPath = params['*'];
   // 获取当前选中的UUID
@@ -42,45 +36,6 @@ const Mission = () => {
         return <Calendar size={16} className="mr-1" />;
       default:
         return <Kanban size={16} className="mr-1" />;
-    }
-  };
-
-  // 滚动条交互处理 - 竖向滚动控制BoardView横向滚动
-  const handleScrollThumbMouseDown = (e) => {
-    e.preventDefault();
-    setIsScrolling(true);
-    const startY = e.clientY;
-    const startScroll = scrollPosition;
-
-    const handleMouseMove = (moveEvent) => {
-      const deltaY = moveEvent.clientY - startY;
-      const newScrollPosition = Math.max(0, Math.min(100, startScroll + (deltaY / 2)));
-      setScrollPosition(newScrollPosition);
-
-      // 控制BoardView的横向滚动
-      if (boardViewContainerRef.current) {
-        const scrollWidth = boardViewContainerRef.current.scrollWidth - boardViewContainerRef.current.clientWidth;
-        const scrollLeft = (newScrollPosition / 100) * scrollWidth;
-        boardViewContainerRef.current.scrollLeft = scrollLeft;
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsScrolling(false);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-
-  // 处理BoardView横向滚动
-  const handleBoardViewScroll = () => {
-    if (boardViewContainerRef.current && !isScrolling) {
-      const { scrollLeft, scrollWidth, clientWidth } = boardViewContainerRef.current;
-      const scrollPercentage = scrollWidth > clientWidth ? (scrollLeft / (scrollWidth - clientWidth)) * 100 : 0;
-      setScrollPosition(scrollPercentage || 0);
     }
   };
 
@@ -233,10 +188,11 @@ const Mission = () => {
     if (currentType === 'board') {
       return (
         <BoardView
-          ref={boardViewContainerRef}
+          // ref={boardViewContainerRef} // 已注释掉横向滚动功能
           config={config}
           data={data}
           fieldConfigs={fieldConfigs}
+          // onScroll={handleBoardViewScroll} // 已注释掉横向滚动功能
         />
       );
     }
@@ -354,7 +310,7 @@ const Mission = () => {
     <div className="min-h-screen p-2 sm:p-4 pb-10 relative">
       <div className="mx-auto">
         {/* 标签过滤器 */}
-        <div className="mb-4 w-full overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+        <div className="mb-4 w-full overflow-x-auto pb-2">
           <div className="flex space-x-2 min-w-max">
             {/* 搜索按钮 */}
             {isSearchExpanded ? (
@@ -416,18 +372,6 @@ const Mission = () => {
           style={{ overflowY: 'hidden', maxHeight: 'none' }}
         >
           {renderMissionContent()}
-        </div>
-      </div>
-
-      {/* 透明竖向悬浮滚动条 */}
-      <div className="mission-vertical-scrollbar">
-        <div className="scrollbar-track">
-          <div
-            ref={scrollThumbRef}
-            className="scrollbar-thumb"
-            style={{ top: `${scrollPosition}%`, transform: 'translateX(-50%)' }}
-            onMouseDown={handleScrollThumbMouseDown}
-          ></div>
         </div>
       </div>
     </div>

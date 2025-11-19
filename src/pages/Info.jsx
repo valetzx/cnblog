@@ -15,13 +15,13 @@ import {
   processCommentData
 } from '@/cnbUtils/commentCache';
 import ImagePreview from '@/components/ImagePreview';
-// 导入图片缓存工具
 import {
   getImageUrlFromCache,
   saveImageUrlToCache,
   getBatchImageUrlsFromCache
 } from '@/cnbUtils/imageCache';
 import { LoadingSpinner } from '@/fetchPage/LoadingSpinner';
+import { ScrollbarEvents } from '@/components/Scrollbars'; 
 
 const MemoizedInfoRenderer = memo(InfoRenderer);
 const MemoizedCommitRender = memo(CommitRender);
@@ -42,17 +42,19 @@ const Info = () => {
   const [headings, setHeadings] = useState([]);
   const commentTimerRef = useRef(null);
   const displayedCommentIdsRef = useRef(new Set());
-  
-  // 图片预览状态 - 提升到组件级别
+  const restartTimerRef = useRef(null);
+  const [isPageVisible, setIsPageVisible] = useState(true);
+  const [isRightBarCollapsed, setIsRightBarCollapsed] = useState(() => {
+    if (window.innerWidth < 1300) {
+      return true;
+    }
+    return false;
+  });
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewImages, setPreviewImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  // 预加载的所有图片列表（文章图片 + 所有评论图片）
   const [allImages, setAllImages] = useState([]);
   const allImagesRef = useRef([]);
-
-  // 从 HTML 内容中提取所有图片
   const extractAllImagesFromHTML = useCallback(async (html) => {
     if (!html) return [];
 
@@ -250,19 +252,23 @@ const Info = () => {
 
     // 显示通知，结构为 "名字：内容"
     toast.info(`${title}: ${truncatedDescription}`, {
-      duration: 5800,
+      duration: 5600,
       position: 'bottom-right'
     });
   };
 
   // 启动评论通知定时器
   const startCommentNotificationTimer = () => {
+    // 如果页面不可见，不启动定时器
+    if (!isPageVisible) return;
+
     if (commentTimerRef.current) {
       clearInterval(commentTimerRef.current);
     }
 
     commentTimerRef.current = setInterval(async () => {
-      if (cards.length === 0) return;
+      // 如果页面不可见，不显示通知
+      if (!isPageVisible || cards.length === 0) return;
 
       try {
         // 获取所有未显示的评论
@@ -291,7 +297,7 @@ const Info = () => {
       } catch (error) {
         console.error('显示评论通知失败:', error);
       }
-    }, 5000); // 每5秒执行一次
+    }, 6000); // 每6秒执行一次
   };
 
   // 停止评论通知定时器
@@ -300,7 +306,36 @@ const Info = () => {
       clearInterval(commentTimerRef.current);
       commentTimerRef.current = null;
     }
+    // 清理重新启动的setTimeout
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
   };
+
+  // 监听页面可见性变化
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const isVisible = !document.hidden;
+      setIsPageVisible(isVisible);
+
+      if (isVisible) {
+        // 页面变为可见时，重新启动定时器
+        if (cards.length > 0 && !commentTimerRef.current) {
+          startCommentNotificationTimer();
+        }
+      } else {
+        // 页面变为不可见时，停止定时器
+        stopCommentNotificationTimer();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [cards]);
 
   // 组件卸载时清理定时器
   useEffect(() => {
@@ -311,7 +346,7 @@ const Info = () => {
 
   // 当评论数据变化时启动定时器
   useEffect(() => {
-    if (cards.length > 0) {
+    if (cards.length > 0 && isPageVisible) {
       stopCommentNotificationTimer();
       displayedCommentIdsRef.current.clear();
       startCommentNotificationTimer();
@@ -320,7 +355,7 @@ const Info = () => {
     return () => {
       stopCommentNotificationTimer();
     };
-  }, [cards]);
+  }, [cards, isPageVisible]);
 
   useEffect(() => {
     const fetchIssue = async () => {
@@ -430,13 +465,8 @@ const Info = () => {
       if (updated) {
         // 按创建时间排序，根据 sortOrder 决定顺序
         setCards(sortComments(newCards));
-
-        // 保存到缓存
         await saveCommentsToCache(data, repopath, number);
-      } else {
-        // 使用toast提示而不是设置错误状态
-        toast.error('没有新的评论可加载', { duration: 3000, position: 'top-right' });
-      }
+      } 
     } catch (err) {
       console.error('加载评论失败', err);
       setCommentsError(`加载失败: ${err.message}`);
@@ -465,6 +495,23 @@ const Info = () => {
     }
   }, [sortOrder, sortBy, sortComments]);
 
+  // 处理右侧栏折叠状态变化
+  const handleRightBarCollapseChange = useCallback((collapsed) => {
+    setIsRightBarCollapsed(collapsed);
+    localStorage.setItem('rightbarPin', collapsed.toString());
+  }, []);
+
+  // 监听ScrollbarEvents中心按钮点击事件
+  useEffect(() => {
+    const unsubscribe = ScrollbarEvents.onCenterButtonClick(() => {
+      setIsRightBarCollapsed(prev => !prev);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -479,9 +526,14 @@ const Info = () => {
 
   return (
     <>
-      <div className="w-full max-w-screen-lg mx-auto grid grid-cols-1 xl:grid-cols-5 gap-6 pb-4 px-4">
-        {/* 主要内容区域 */}
-        <div className="xl:col-span-4">
+      <div className="w-full max-w-screen-2xl mx-auto grid grid-cols-1 xl:grid-cols-4 gap-6 pb-4 px-4">
+
+        {/* 主要内容区域 - 根据右侧栏折叠状态动态调整宽度 */}
+        <div className={`transition-all duration-300 ${
+          isRightBarCollapsed
+            ? 'xl:col-span-4'  // 右侧栏折叠时占据全部4列
+            : 'xl:col-span-3'  // 右侧栏展开时占据3列
+        }`}>
           {/* 文章内容区域 */}
           <MemoizedInfoRenderer
             issue={issue}
@@ -500,14 +552,19 @@ const Info = () => {
             onImageClick={handleImageClick}
           />
         </div>
-          
         {/* 右侧目录区域 */}
-        <div>
+        <div className={isRightBarCollapsed ? 'hidden xl:block' : 'xl:col-span-1'}>
           <RightBar
             headings={headings}
             onHeadingClick={handleHeadingClick}
+            onCollapseChange={handleRightBarCollapseChange}
+            repopath={repopath}
+            issueTitle={issue?.title}
+            issueBody={issue?.body}
+            isCollapsed={isRightBarCollapsed}
           />
         </div>
+        
       </div>
 
       {/* 统一的图片预览模态框 */}

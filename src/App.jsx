@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, useLocation } from "react-router-dom";
 import { navItems } from "./nav-items";
 import Layout from "./components/Layout";
 import { ThemeProvider } from 'next-themes';
@@ -32,6 +32,23 @@ const withLayout = (Component) => {
   );
 };
 
+// 路由包装器
+const AppRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <Routes location={location}>
+      {navItems.map(({ to, page }) => (
+        <Route
+          key={to}
+          path={to}
+          element={withLayout(() => page)}
+        />
+      ))}
+    </Routes>
+  );
+};
+
 const App = () => {
   useEffect(() => {
     registerServiceWorker();
@@ -43,11 +60,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <HashRouter>
-            <Routes>
-              {navItems.map(({ to, page }) => (
-                <Route key={to} path={to} element={withLayout(() => page)} />
-              ))}
-            </Routes>
+            <AppRoutes />
           </HashRouter>
         </TooltipProvider>
       </ThemeProvider>

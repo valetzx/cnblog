@@ -7,10 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DialogContent, DialogTitle, Dialog, DialogHeader } from '@/components/ui/dialog';
 import UserSettings from '@/components/UserSettings';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Search, Code, Cloud, Users, BookOpen, Package, Heart, GitBranch, X, Mail, MapPin, Globe, Calendar, UserCheck, Star, Activity, CheckSquare, PlusSquare, AlertCircle, File, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getUserInfo } from '@/cnbUtils/indexedDB';
 import { LoadingSpinner } from '@/fetchPage/LoadingSpinner';
+import { getAllSchema } from '@/cnbRepos/allSchema';
 import { getUserInfoFromAPI, formatUserInfoFromAPI } from '@/cnbUtils/userInfo';
 import { getUserCreatedIssues, formatIssuesForDisplay, formatDisplayDate } from '@/cnbUtils/userCreated';
 import { getUserStarredRepos, formatReposForDisplay, getPrimaryLanguage } from '@/cnbUtils/userStarred';
@@ -21,8 +23,9 @@ import { getUserTasks, formatTasksForDisplay, getVisibilityLabel, getAccessLabel
 import { getUserGroups, formatGroupsForDisplay, getAccessRoleLabel, formatNumber } from '@/cnbUtils/userGroup';
 import { getUserRepos, formatReposForDisplay as formatUserReposForDisplay, getPrimaryLanguage as getRepoPrimaryLanguage } from '@/cnbUtils/userRepos';
 import { getUserOrganizations, formatOrganizationsForDisplay as formatUserOrganizationsForDisplay } from '@/cnbUtils/userOrganization';
+import { getUserCodeActivities, generateTimelineData, formatActivityDate } from '@/cnbUtils/codeActivities';
 import { getUserMissions, formatMissionsForDisplay } from '@/cnbUtils/userMission.jsx';
-import { getAllSchema } from '@/cnbRepos/allSchema';
+
 
 const User = () => {
   const { username } = useParams();
@@ -85,6 +88,12 @@ const User = () => {
   const [userReposLoading, setUserReposLoading] = useState(false);
   const [userReposError, setUserReposError] = useState(null);
 
+  // 代码活动时间线相关状态
+  const [codeActivities, setCodeActivities] = useState(null);
+  const [codeActivitiesLoading, setCodeActivitiesLoading] = useState(false);
+  const [codeActivitiesError, setCodeActivitiesError] = useState(null);
+  const [timelineData, setTimelineData] = useState([]);
+
   // allSchema 弹窗相关状态
   const [allSchemaData, setAllSchemaData] = useState(null);
   const [allSchemaLoading, setAllSchemaLoading] = useState(false);
@@ -114,7 +123,7 @@ const User = () => {
             setUserInfo({
               username: username || 'currentUser',
               avatar: `https://cnb.cool/users/${username}/avatar/s`,
-              name: username || '用户',
+              name: username || '用户请登录',
               bio: '暂无用户信息',
               followers: 0,
               following: 0,
@@ -136,7 +145,7 @@ const User = () => {
             setUserInfo({
               username: userData.username || 'currentUser',
               avatar: userData.avatar_url || `https://cnb.cool/users/${userData.username}/avatar/s`,
-              name: userData.nickname || userData.username || '用户',
+              name: userData.nickname || userData.username || '用户请登录',
               bio: userData.bio || '暂无用户信息',
               followers: userData.follower_count || 0,
               following: userData.follow_count || 0,
@@ -155,7 +164,7 @@ const User = () => {
             setUserInfo({
               username: 'currentUser',
               avatar: 'https://cnb.cool/users/currentUser/avatar/s',
-              name: '用户',
+              name: '用户请登录',
               bio: '暂无用户信息',
               followers: 0,
               following: 0,
@@ -169,13 +178,58 @@ const User = () => {
             });
           }
         }
-      } finally {
+        setLoading(false);
+      } catch (error) {
+        console.error('获取用户信息失败:', error);
+        setUserInfo({
+          username: username || 'currentUser',
+          avatar: `https://cnb.cool/users/${username || 'currentUser'}/avatar/s`,
+          name: username || '用户',
+          bio: '加载用户信息失败',
+          followers: 0,
+          following: 0,
+          repositories: 0,
+          stars: 0,
+          site: '',
+          joined: '',
+          missions: 0,
+          registries: 0,
+          groups: 0
+        });
         setLoading(false);
       }
     };
 
     fetchUserInfo();
   }, [username]);
+
+  // 加载用户代码活动时间线
+  useEffect(() => {
+    if (username && selectedTag === 'all') {
+      const fetchCodeActivities = async () => {
+        setCodeActivitiesLoading(true);
+        setCodeActivitiesError(null);
+
+        try {
+          const activities = await getUserCodeActivities(username);
+          setCodeActivities(activities);
+
+          // 生成时间线数据
+          const timeline = generateTimelineData(activities);
+          setTimelineData(timeline);
+        } catch (error) {
+          setCodeActivitiesError(error.message);
+          console.error('获取代码活动失败:', error);
+        } finally {
+          setCodeActivitiesLoading(false);
+        }
+      };
+
+      fetchCodeActivities();
+    }
+  }, [username, selectedTag]);
+
+  // 格式化日期函数
 
   // 根据是否有username参数决定使用哪种标签
   const tags = username ? [
@@ -524,7 +578,7 @@ const User = () => {
         </div>
 
         {/* 用户信息头部 */}
-        <Card className="mb-4">
+        <Card className="mb-2">
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <Avatar className="h-16 w-16 sm:h-20 sm:w-20">
@@ -596,6 +650,149 @@ const User = () => {
         </Card>
 
         {/* 内容区域 - 根据选中的标签显示不同内容 */}
+        {selectedTag === 'all' && username && (
+          <div className="mt-6">
+            {/* 代码活动时间线 */}
+            {codeActivitiesError && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center dark:bg-red-900/20 dark:border-red-800">
+                <p className="text-red-700 dark:text-red-300">加载代码活动失败: {codeActivitiesError}</p>
+              </div>
+            )}
+
+            {codeActivitiesLoading && (
+              <div className="text-center py-8">
+                <LoadingSpinner />
+                <p className="text-gray-500 dark:text-gray-400 mt-2">加载代码活动...</p>
+              </div>
+            )}
+
+            {!codeActivitiesLoading && !codeActivitiesError && timelineData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity size={20} />
+                    用户活动
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* 在所有合集上方显示日期 */}
+                  {timelineData.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        {timelineData[0].date}
+                      </h3>
+                    </div>
+                  )}
+                  <div className="space-y-6">
+                    {timelineData.map((item, index) => (
+                      <div key={index} className="pl-4 ml-2 relative">
+                        {/* 垂直连接线 - 所有项目都显示 */}
+                        <div className="absolute left-0 top-6 w-0.5 h-full bg-indigo-200 dark:bg-indigo-700 -translate-x-1/2"></div>
+                        <div className="flex items-center mb-2">
+                          <div className="w-6 h-6 bg-indigo-500 rounded-full absolute -left-3 z-10"></div>
+                          <h3 className="ml-2 font-semibold text-gray-900 dark:text-gray-100">
+                            {item.title}
+                          </h3>
+                        </div>
+
+                        {/* 时间线内容 */}
+                        <div className="ml-4">
+                          {/* 提交统计详情 */}
+                          {item.type === 'commit_summary' && item.data && item.data.length > 0 && (
+                            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mt-2">
+                              <div className="space-y-1">
+                                {item.data.map((commit, idx) => (
+                                  <div key={idx} className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-600 dark:text-gray-400">
+                                      {commit.detail?.path}
+                                    </span>
+                                    <span className="font-medium text-indigo-600 dark:text-indigo-400">
+                                      {commit.time}次
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 仓库创建详情 */}
+                          {item.type === 'repo_creation' && item.data && item.data.length > 0 && (
+                            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mt-2">
+                              <div className="space-y-2">
+                                {item.data.map((repo, idx) => (
+                                  <div key={idx} className="text-sm">
+                                    <p className="font-medium text-gray-800 dark:text-gray-200">
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="cursor-help border-b border-dotted border-gray-400">
+                                            {repo.detail?.path}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="max-w-xs">{repo.detail?.description || '暂无描述'}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </p>
+
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 合并请求统计详情 */}
+                          {item.type === 'pull_request_summary' && item.data && item.data.length > 0 && (
+                            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mt-2">
+                              <div className="space-y-1">
+                                {item.data.map((pr, idx) => (
+                                  <div key={idx} className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-600 dark:text-gray-400">
+                                      {pr.detail?.path}
+                                    </span>
+                                    <span className="font-medium text-indigo-600 dark:text-indigo-400">
+                                      {pr.time}个
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Issue统计详情 */}
+                          {item.type === 'issue_summary' && item.data && item.data.length > 0 && (
+                            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mt-2">
+                              <div className="space-y-1">
+                                {item.data.map((issue, idx) => (
+                                  <div key={idx} className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-600 dark:text-gray-400">
+                                      {issue.detail?.path}
+                                    </span>
+                                    <span className="font-medium text-indigo-600 dark:text-indigo-400">
+                                      {issue.time}个
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {!codeActivitiesLoading && !codeActivitiesError && timelineData.length === 0 && (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <Activity size={48} className="mx-auto mb-4 opacity-50" />
+                <p>暂无代码活动数据</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 我创建的内容区域 */}
         {selectedTag === 'created' && (
           <div className="mt-6">
             {createdError && (

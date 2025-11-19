@@ -174,8 +174,6 @@ const Info = () => {
         // 按创建时间排序，最新的在前
         newCards.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setCards(newCards);
-      } else {
-        setCommentsError('没有新的评论可加载');
       }
     } catch (err) {
       console.error('加载评论失败', err);

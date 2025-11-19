@@ -114,6 +114,15 @@ export const openDB = () => {
         reposStore.createIndex('access', 'access', { unique: false });
         reposStore.createIndex('user_id', 'user_id', { unique: false }); // 新增用户ID索引
       }
+
+      // 创建用户代码活动表
+      if (!db.objectStoreNames.contains('user_code_activities')) {
+        const codeActivitiesStore = db.createObjectStore('user_code_activities', { keyPath: 'id' });
+        codeActivitiesStore.createIndex('username', 'username', { unique: false });
+        codeActivitiesStore.createIndex('date', 'date', { unique: false });
+        codeActivitiesStore.createIndex('created_at', 'created_at', { unique: false });
+        codeActivitiesStore.createIndex('user_id', 'user_id', { unique: false });
+      }
     };
   });
 };
@@ -232,6 +241,7 @@ export const clearUserInfo = async () => {
 
     // 同时清除localStorage
     localStorage.removeItem('currentUser');
+
     localStorage.removeItem('CNBSESSION');
   } catch (error) {
     console.error('清除用户信息失败:', error);
@@ -1194,6 +1204,120 @@ export const clearUserReposCache = async () => {
     await transaction.done;
   } catch (error) {
     console.error('清除用户仓库缓存失败:', error);
+    throw error;
+  }
+};
+
+// 保存用户代码活动到缓存
+export const saveUserCodeActivities = async (activities, username, date = null) => {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction(['user_code_activities', 'cache_metadata'], 'readwrite');
+    const store = transaction.objectStore('user_code_activities');
+    const metadataStore = transaction.objectStore('cache_metadata');
+
+    // 生成唯一ID
+    const activityId = `${username}-${date || 'all'}`;
+
+    // 保存代码活动数据
+    const activityData = {
+      id: activityId,
+      username: username,
+      date: date,
+      activities: activities,
+      created_at: new Date().toISOString(),
+      user_id: username // 使用username作为user_id
+    };
+
+    await store.put(activityData);
+
+    // 保存缓存元数据
+    const metadata = {
+      key: `user_code_activities_${username}`,
+      type: 'user_code_activities',
+      last_updated: new Date().toISOString(),
+      count: 1,
+      user_id: username
+    };
+    await metadataStore.put(metadata);
+
+    await transaction.done;
+    return 1;
+  } catch (error) {
+    console.error('保存用户代码活动失败:', error);
+    throw error;
+  }
+};
+
+// 从缓存获取用户代码活动
+export const getUserCodeActivitiesFromCache = async (username, date = null) => {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction(['user_code_activities'], 'readonly');
+    const store = transaction.objectStore('user_code_activities');
+
+    let activityId;
+    if (date) {
+      activityId = `${username}-${date}`;
+    } else {
+      // 如果没有指定日期，获取最新的活动数据
+      const index = store.index('username');
+      const request = index.getAll(username);
+
+      const allActivities = await new Promise((resolve, reject) => {
+        request.onsuccess = (event) => resolve(event.target.result || []);
+        request.onerror = () => reject(request.error);
+      });
+
+      // 按创建时间降序排序，返回最新的
+      allActivities.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return allActivities.length > 0 ? allActivities[0] : null;
+    }
+
+    // 获取指定日期的活动数据
+    return await store.get(activityId);
+  } catch (error) {
+    console.error('从缓存获取用户代码活动失败:', error);
+    return null;
+  }
+};
+
+// 清除用户代码活动缓存
+export const clearUserCodeActivitiesCache = async (username = null) => {
+  try {
+    const db = await openDB();
+    const transaction = db.transaction(['user_code_activities', 'cache_metadata'], 'readwrite');
+    const store = transaction.objectStore('user_code_activities');
+    const metadataStore = transaction.objectStore('cache_metadata');
+
+    if (username) {
+      // 清除指定用户的缓存
+      const index = store.index('username');
+      const request = index.openCursor(IDBKeyRange.only(username));
+
+      return new Promise((resolve, reject) => {
+        request.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            cursor.delete();
+            cursor.continue();
+          } else {
+            // 删除对应的元数据
+            metadataStore.delete(`user_code_activities_${username}`);
+            resolve();
+          }
+        };
+        request.onerror = () => reject(request.error);
+      });
+    } else {
+      // 清除所有缓存
+      await store.clear();
+      await metadataStore.delete('user_code_activities');
+    }
+
+    await transaction.done;
+  } catch (error) {
+    console.error('清除用户代码活动缓存失败:', error);
     throw error;
   }
 };
