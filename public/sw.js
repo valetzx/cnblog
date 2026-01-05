@@ -119,7 +119,7 @@ function modifyJavaScript(code) {
         }
       });
       
-      // 拦截可能的动态创建
+      // 拦截可能的恶意脚本创建
       const originalCreateElement = document.createElement;
       document.createElement = function(tag) {
         const element = originalCreateElement.call(this, tag);
@@ -183,6 +183,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   const currentOrigin = self.location.origin;
+  // 关键：获取当前访问域名（部署SW的域名）
+  const currentHost = self.location.hostname;
   
   console.log('[SW-FETCH] 拦截请求:', {
     url: url.href,
@@ -190,6 +192,21 @@ self.addEventListener('fetch', (event) => {
     mode: event.request.mode,
     type: event.request.destination
   });
+
+  // ========== 新增：优先排除当前域名的JS文件，不进行任何拦截修改 ==========
+  const isCurrentDomainJS = (
+    url.hostname === currentHost && // 属于当前访问域名
+    (event.request.destination === 'script' || // JS请求标识
+     url.pathname.endsWith('.js') ||
+     event.request.headers.get('Accept')?.includes('javascript'))
+  );
+  if (isCurrentDomainJS) {
+    console.log('[SW-SKIP] 当前域名JS文件，跳过拦截修改:', url.href);
+    // 原样返回请求结果，不做任何处理
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  // =====================================================================
   
   const runtimeJsReg = /\/runtime\.js(?:\?.*)?$/i;
   const isTargetRuntimeJs = url.hostname === TARGET_HOST && runtimeJsReg.test(url.pathname + url.search);
@@ -226,7 +243,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // 5. 拦截其他可能的 JS 文件（额外检查）
+  // 5. 拦截其他可能的 JS 文件（额外检查）- 已自动排除当前域名JS（上方优先判断）
   if (event.request.destination === 'script' || 
       url.pathname.endsWith('.js') ||
       event.request.headers.get('Accept')?.includes('javascript')) {
@@ -267,7 +284,7 @@ async function handleTargetJS(event) {
     
     // 创建新响应
     const newResponse = new Response(modifiedText, {
-      status: 200,
+      status: 201,
       statusText: 'OK',
       headers: new Headers({
         'Content-Type': 'application/javascript; charset=utf-8',
