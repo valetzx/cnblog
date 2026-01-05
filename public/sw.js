@@ -1,5 +1,4 @@
 const CACHE_NAME = 'proxy-cache-v2';
-const TARGET_JS_URL = 'https://cnb.cdn-go.cn/monorepo/latest/99dc9d00c1ac33b4/_next/static/chunks/runtime.js';
 const TARGET_HOST = 'cnb.cdn-go.cn';
 const AVATAR_DOMAIN = 'cnb.cool';
 const WECHAT_DOMAIN = 'localhost.weixin.qq.com';
@@ -192,10 +191,11 @@ self.addEventListener('fetch', (event) => {
     type: event.request.destination
   });
   
-  // 1. 拦截目标 JavaScript 文件
-  if (url.href.includes(TARGET_JS_URL) || 
-      (url.hostname === TARGET_HOST && url.pathname.includes('runtime.js'))) {
-    console.log('[SW-TARGET] 拦截目标 JS 文件:', url.href);
+  const runtimeJsReg = /\/runtime\.js(?:\?.*)?$/i;
+  const isTargetRuntimeJs = url.hostname === TARGET_HOST && runtimeJsReg.test(url.pathname + url.search);
+  
+  if (isTargetRuntimeJs) {
+    console.log('[SW-TARGET] 模糊匹配到目标 JS 文件:', url.href);
     event.respondWith(handleTargetJS(event));
     return;
   }
