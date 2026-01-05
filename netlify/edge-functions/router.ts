@@ -1,67 +1,112 @@
 // netlify/edge-functions/proxy-handler.ts
 import type { Context } from "@netlify/edge-functions";
 
-// ==================== JS 修改函数 ====================
-function modifyJavaScript(code: string): string {
-  console.log('🔧 修改 JavaScript，长度:', code.length);
+// ==================== HTML 修改函数 ====================
+function injectServiceWorkerCode(html: string): string {
+  console.log('🔧 在所有页面注入 Service Worker 自动加载代码');
   
-  let modified = code;
-  
-  // ========== 1. 核心：修改 ah 函数 ==========
-  // 合并所有 ah 函数模式为一个
-  const ahPattern = /(?:function\s+ah|ah\s*=\s*function)\s*\([^)]*\)\s*\{[\s\S]*?\}/g;
-  
-  const ahMatches = modified.match(ahPattern);
-  if (ahMatches && ahMatches.length > 0) {
-    console.log('✅ 找到并替换 ah 函数:', ahMatches.length);
-    modified = modified.replace(
-      ahPattern,
-      'function ah(e) { console.debug("[BYPASS] ah check bypassed"); return false; }'
-    );
-  }
-  
-  // ========== 2. 移除 throw 错误 ==========
-  // 合并所有 throw 错误模式
-  const throwPattern = /throw\s+(?:new\s+)?Error\([^)]*(?:418|debug|检测)[^)]*\)/g;
-  
-  const throwMatches = modified.match(throwPattern);
-  if (throwMatches && throwMatches.length > 0) {
-    console.log('✅ 移除 throw 错误:', throwMatches.length);
-    modified = modified.replace(
-      throwPattern,
-      'console.error("[BYPASS] Error bypassed")'
-    );
-  }
-  
-  // ========== 3. 移除 debugger ==========
-  const debuggerMatches = modified.match(/debugger\s*;/g);
-  if (debuggerMatches && debuggerMatches.length > 0) {
-    console.log('✅ 移除 debugger:', debuggerMatches.length);
-    modified = modified.replace(/debugger\s*;/g, '/* debugger removed */');
-  }
-  
-  // ========== 4. 检查是否有修改 ==========
-  if (code !== modified) {
-    console.log('🔄 代码已被修改，注入保护代码');
+  const swInjectionCode = `
+  <script>
+  // 自动请求加载 sw.js
+  (function() {
+    // 检查是否是 Service Worker 文件本身
+    if (window.location.pathname === '/sw.js') {
+      return;
+    }
     
-    // 只注入必要的保护代码
-    const injectCode = `
-// ========== [INJECTED BY PROXY] ==========
-try {
-  if (typeof window !== 'undefined') {
-    window.ah = function(e) { return false; };
-    Object.defineProperty(window, 'ah', { writable: false });
-  }
-} catch(e) {}
-// ========================================
-`;
+    // 强制加载 sw.js（确保缓存被绕过）
+    const swUrl = '/sw.js?' + Date.now();
     
-    modified = injectCode + '\n' + modified;
+    // 方法1: 直接 fetch 请求（确保文件被加载）
+    fetch(swUrl, {
+      cache: 'no-store',
+      headers: {
+        'Pragma': 'no-cache',
+        'Cache-Control': 'no-cache'
+      }
+    }).then(response => {
+      if (response.ok) {
+        console.log('[SW] sw.js 已成功加载');
+        return response.text();
+      }
+      throw new Error('SW 加载失败: ' + response.status);
+    }).then(code => {
+      // 成功加载代码（可选：检查代码长度等）
+      console.log('[SW] sw.js 加载完成，大小:', code.length, '字节');
+      
+      // 尝试注册 Service Worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .then(registration => {
+            console.log('[SW] Service Worker 注册成功，作用域:', registration.scope);
+            
+            // 如果有等待的 Service Worker，立即激活
+            if (registration.waiting) {
+              registration.waiting.postMessage({type: 'SKIP_WAITING'});
+              console.log('[SW] 已跳过等待期');
+            }
+            
+            // 监听更新
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed') {
+                  console.log('[SW] 检测到新版本 Service Worker');
+                }
+              });
+            });
+          })
+          .catch(error => {
+            console.error('[SW] Service Worker 注册失败:', error);
+          });
+      }
+    }).catch(error => {
+      console.warn('[SW] sw.js 加载失败:', error);
+    });
+    
+    // 方法2: 创建 script 标签预加载（确保被浏览器缓存）
+    const preloadLink = document.createElement('link');
+    preloadLink.rel = 'preload';
+    preloadLink.as = 'script';
+    preloadLink.href = swUrl;
+    preloadLink.crossOrigin = 'anonymous';
+    document.head.appendChild(preloadLink);
+    
+    // 方法3: 创建 script 标签执行（如果 SW 注册需要先加载代码）
+    const script = document.createElement('script');
+    script.src = swUrl;
+    script.crossOrigin = 'anonymous';
+    script.onload = function() {
+      console.log('[SW] sw.js 脚本已执行');
+    };
+    script.onerror = function() {
+      console.warn('[SW] sw.js 脚本加载失败');
+    };
+    
+    // 延迟一点执行，避免阻塞页面
+    setTimeout(() => {
+      document.head.appendChild(script);
+    }, 100);
+  })();
+  </script>
+  `;
+  
+  // 查找 </head> 标签，在前面注入
+  const headEndIndex = html.indexOf('</head>');
+  if (headEndIndex !== -1) {
+    return html.slice(0, headEndIndex) + swInjectionCode + html.slice(headEndIndex);
   }
   
-  return modified;
+  // 如果没有 head 标签，尝试在 body 开始处注入
+  const bodyStartIndex = html.indexOf('<body');
+  if (bodyStartIndex !== -1) {
+    const bodyEndIndex = html.indexOf('>', bodyStartIndex) + 1;
+    return html.slice(0, bodyEndIndex) + swInjectionCode + html.slice(bodyEndIndex);
+  }
+  
+  // 如果都找不到，直接在最后注入
+  return html + swInjectionCode;
 }
-
 // ==================== 主代理函数 ====================
 export default async (request: Request, context: Context) => {
   const url = new URL(request.url);
