@@ -3,127 +3,62 @@ import type { Context } from "@netlify/edge-functions";
 
 // ==================== JS 修改函数 ====================
 function modifyJavaScript(code: string): string {
-  console.log('🔧 开始修改 JavaScript 代码，长度:', code.length);
-  
-  // 1. 修改 ah 函数（核心反调试检测）
-  const ahPatterns = [
-    // 模式1: function ah(e) { return 0 != (1 & e.mode) && 0 == (000 & e.flags) }
-    /function\s+ah\s*\([^)]*\)\s*\{[\s\S]*?return\s+0\s*!=\s*\(\s*1\s*&\s*e\.mode\s*\)[\s\S]*?\}/g,
-    
-    // 模式2: ah = function(e) { return 0 != (1 & e.mode) && 0 == (000 & e.flags) }
-    /ah\s*=\s*function\s*\([^)]*\)\s*\{[\s\S]*?return\s+0\s*!=\s*\(\s*1\s*&\s*e\.mode\s*\)[\s\S]*?\}/g,
-    
-    // 模式3: 任何 ah 函数定义
-    /function\s+ah\s*\([^)]*\)\s*\{[^}]*\}/g,
-    
-    // 模式4: 任何 ah 函数表达式
-    /ah\s*=\s*function\s*\([^)]*\)\s*\{[^}]*\}/g
-  ];
+  console.log('🔧 修改 JavaScript，长度:', code.length);
   
   let modified = code;
-  ahPatterns.forEach(pattern => {
-    const matches = modified.match(pattern);
-    if (matches && matches.length > 0) {
-      console.log('✅ 找到 ah 函数，替换次数:', matches.length);
-      modified = modified.replace(pattern, 'function ah(e){console.debug("[BYPASS] ah check bypassed");return false;}');
-    }
-  });
   
-  // 2. 修改 am 函数中的检测逻辑
-  const amModifications = [
-    // 移除 throw Error(f(418))
-    {
-      pattern: /if\s*\(\s*ah\s*\(\s*e\s*\)\s*\)\s*\{[^}]*throw\s+Error\(f\(418\)\)[^}]*\}/g,
-      replacement: 'if(ah(e)){console.warn("[BYPASS] Debug detection bypassed (418)");}'
-    },
-    // 移除其他 throw 语句
-    {
-      pattern: /throw\s+(?:new\s+)?Error\([^)]*418[^)]*\)/g,
-      replacement: 'console.error("[BYPASS] Error 418 bypassed")'
-    },
-    {
-      pattern: /throw\s+(?:new\s+)?Error\([^)]*debug[^)]*\)/gi,
-      replacement: 'console.error("[BYPASS] Debug error bypassed")'
-    },
-    {
-      pattern: /throw\s+(?:new\s+)?Error\([^)]*检测[^)]*\)/g,
-      replacement: 'console.error("[BYPASS] 检测 bypassed")'
-    }
-  ];
+  // ========== 1. 核心：修改 ah 函数 ==========
+  // 合并所有 ah 函数模式为一个
+  const ahPattern = /(?:function\s+ah|ah\s*=\s*function)\s*\([^)]*\)\s*\{[\s\S]*?\}/g;
   
-  amModifications.forEach(mod => {
-    const matches = modified.match(mod.pattern);
-    if (matches && matches.length > 0) {
-      console.log(`✅ 找到并替换检测逻辑: ${mod.pattern.toString().substring(0, 50)}...`);
-      modified = modified.replace(mod.pattern, mod.replacement);
-    }
-  });
+  const ahMatches = modified.match(ahPattern);
+  if (ahMatches && ahMatches.length > 0) {
+    console.log('✅ 找到并替换 ah 函数:', ahMatches.length);
+    modified = modified.replace(
+      ahPattern,
+      'function ah(e) { console.debug("[BYPASS] ah check bypassed"); return false; }'
+    );
+  }
   
-  // 3. 移除 debugger 语句
+  // ========== 2. 移除 throw 错误 ==========
+  // 合并所有 throw 错误模式
+  const throwPattern = /throw\s+(?:new\s+)?Error\([^)]*(?:418|debug|检测)[^)]*\)/g;
+  
+  const throwMatches = modified.match(throwPattern);
+  if (throwMatches && throwMatches.length > 0) {
+    console.log('✅ 移除 throw 错误:', throwMatches.length);
+    modified = modified.replace(
+      throwPattern,
+      'console.error("[BYPASS] Error bypassed")'
+    );
+  }
+  
+  // ========== 3. 移除 debugger ==========
   const debuggerMatches = modified.match(/debugger\s*;/g);
   if (debuggerMatches && debuggerMatches.length > 0) {
-    console.log('✅ 移除 debugger 语句:', debuggerMatches.length);
+    console.log('✅ 移除 debugger:', debuggerMatches.length);
     modified = modified.replace(/debugger\s*;/g, '/* debugger removed */');
   }
   
-  // 4. 修改控制台检测（如果有）
-  const consolePatterns = [
-    // 检测 console.log 是否被修改
-    /if\s*\(\s*console\.log\.toString\(\)[\s\S]*?throw/g,
-    /if\s*\(\s*console\.debug\.toString\(\)[\s\S]*?throw/g,
-    /if\s*\(\s*console\.warn\.toString\(\)[\s\S]*?throw/g
-  ];
-  
-  consolePatterns.forEach(pattern => {
-    if (modified.match(pattern)) {
-      console.log('✅ 找到控制台检测，绕过');
-      modified = modified.replace(pattern, 'if(false /* console check bypassed */');
-    }
-  });
-  
-  // 5. 注入全局覆盖代码（确保万无一失）
+  // ========== 4. 检查是否有修改 ==========
   if (code !== modified) {
+    console.log('🔄 代码已被修改，注入保护代码');
+    
+    // 只注入必要的保护代码
     const injectCode = `
-// ==================== [INJECTED BY PROXY] ====================
+// ========== [INJECTED BY PROXY] ==========
 try {
-  // 全局覆盖 ah 函数
   if (typeof window !== 'undefined') {
-    window.__original_ah = window.ah;
-    window.ah = function(e) {
-      console.debug('[PROXY-INJECTED] ah always returns false');
-      return false;
-    };
-    Object.defineProperty(window, 'ah', {
-      writable: false,
-      configurable: false,
-      enumerable: true
-    });
+    window.ah = function(e) { return false; };
+    Object.defineProperty(window, 'ah', { writable: false });
   }
-  
-  // 防止 debugger 触发
-  Function.prototype.constructor = new Proxy(Function.prototype.constructor, {
-    apply(target, thisArg, args) {
-      const code = args[0];
-      if (typeof code === 'string' && code.includes('debugger')) {
-        console.warn('[PROXY-INJECTED] debugger statement prevented');
-        return function(){};
-      }
-      return target.apply(thisArg, args);
-    }
-  });
-  
-  console.log('[PROXY] JavaScript modifications applied successfully');
-} catch(e) {
-  console.error('[PROXY] Injection error:', e);
-}
-// =============================================================
+} catch(e) {}
+// ========================================
 `;
     
-    // 在文件开头注入
     modified = injectCode + '\n' + modified;
   }
   
-  console.log('🔧 JavaScript 修改完成');
   return modified;
 }
 
