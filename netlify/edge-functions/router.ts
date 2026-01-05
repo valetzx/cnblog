@@ -235,19 +235,6 @@ export default async (request: Request, context: Context) => {
             headers: new Headers(response.headers)
           });
           
-          // 设置必要的头
-          newResponse.headers.set('Content-Type', 'text/html; charset=utf-8');
-          newResponse.headers.set('Access-Control-Allow-Origin', '*');
-          
-          // 移除可能的安全头（允许注入）
-          newResponse.headers.delete('Content-Security-Policy');
-          newResponse.headers.delete('X-Frame-Options');
-          
-          // 禁用缓存以确保获取修改后的版本
-          newResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-          newResponse.headers.set('Pragma', 'no-cache');
-          newResponse.headers.set('Expires', '0');
-          
           console.log('✅ HTML 页面注入完成');
           return newResponse;
         } catch (error) {
