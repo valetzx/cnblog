@@ -215,69 +215,45 @@ export default async (request: Request, context: Context) => {
 
       console.log(`📥 收到响应: ${response.status} ${response.statusText}`);
 
-      // ========== 核心：检查并修改 JavaScript 响应 ==========
-      const contentType = response.headers.get('content-type') || '';
-      const isJavaScript = contentType.includes('javascript') || 
-                          path.endsWith('.js') ||
-                          /\.js(?:\?|$)/.test(path) ||
-                          url.search.includes('.js');
+      // ========== 检查并修改 HTML 响应 ==========
+      const isHtml = contentType.includes('text/html') || 
+                     path.endsWith('.html') || 
+                     (path === '/' && contentType.includes('text'));
       
-      // 检查文件扩展名（包括查询参数中的 .js）
-      const hasJsExtension = /\.js(?:\?.*)?$/i.test(path);
-      
-      if ((isJavaScript || hasJsExtension) && response.ok) {
-        console.log('🔍 检测到 JavaScript 文件，开始修改...');
+      if (isHtml && response.ok) {
+        console.log('🔍 检测到 HTML 页面，注入 Service Worker 加载代码');
         
         try {
-          const originalText = await response.text();
-          console.log(`📄 JS 文件大小: ${originalText.length} 字符`);
+          const originalHtml = await response.text();
           
-          // 检查是否包含目标模式
-          const hasAhFunction = /function\s+ah|ah\s*=\s*function/.test(originalText);
-          const has418Error = /418/.test(originalText);
-          const hasDebugger = /debugger/.test(originalText);
+          // 注入 Service Worker 自动加载代码
+          const modifiedHtml = injectServiceWorkerCode(originalHtml);
           
-          if (hasAhFunction || has418Error || hasDebugger) {
-            console.log('🎯 检测到需要修改的模式:', {
-              hasAhFunction,
-              has418Error,
-              hasDebugger
-            });
-            
-            const modifiedText = modifyJavaScript(originalText);
-            
-            // 创建新响应
-            const newResponse = new Response(modifiedText, {
-              status: response.status,
-              headers: new Headers(response.headers)
-            });
-            
-            // 设置必要的头
-            newResponse.headers.set('Content-Type', 'application/javascript; charset=utf-8');
-            newResponse.headers.set('Access-Control-Allow-Origin', '*');
-            newResponse.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-            newResponse.headers.set('Access-Control-Allow-Headers', '*');
-            
-            // 移除可能的安全头
-            newResponse.headers.delete('Content-Security-Policy');
-            newResponse.headers.delete('X-Frame-Options');
-            newResponse.headers.delete('X-Content-Type-Options');
-            
-            // 禁用缓存以确保获取修改后的版本
-            newResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-            newResponse.headers.set('Pragma', 'no-cache');
-            newResponse.headers.set('Expires', '0');
-            
-            console.log('✅ JavaScript 修改完成并返回');
-            return newResponse;
-          } else {
-            console.log('ℹ️ 未检测到需要修改的模式，返回原始内容');
-          }
+          // 创建新响应
+          const newResponse = new Response(modifiedHtml, {
+            status: response.status,
+            headers: new Headers(response.headers)
+          });
+          
+          // 设置必要的头
+          newResponse.headers.set('Content-Type', 'text/html; charset=utf-8');
+          newResponse.headers.set('Access-Control-Allow-Origin', '*');
+          
+          // 移除可能的安全头（允许注入）
+          newResponse.headers.delete('Content-Security-Policy');
+          newResponse.headers.delete('X-Frame-Options');
+          
+          // 禁用缓存以确保获取修改后的版本
+          newResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+          newResponse.headers.set('Pragma', 'no-cache');
+          newResponse.headers.set('Expires', '0');
+          
+          console.log('✅ HTML 页面注入完成');
+          return newResponse;
         } catch (error) {
-          console.error('❌ 修改 JavaScript 时出错:', error);
+          console.error('❌ 修改 HTML 时出错:', error);
         }
       }
-
       // ========== 特殊处理 /login/ 路径 ==========
       if (/^\/login\/.*/.test(path)) {
         try {
