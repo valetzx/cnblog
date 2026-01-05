@@ -107,6 +107,7 @@ function injectServiceWorkerCode(html: string): string {
   // 如果都找不到，直接在最后注入
   return html + swInjectionCode;
 }
+
 // ==================== 主代理函数 ====================
 export default async (request: Request, context: Context) => {
   const url = new URL(request.url);
@@ -206,14 +207,10 @@ export default async (request: Request, context: Context) => {
 
       // 发起代理请求
       const response = await fetch(proxyRequest);
-      
-      // 处理 403 响应
-      if (response.status === 403) {
-        console.warn('⛔ 收到 403 响应，移交 Netlify 处理');
-        return;
-      }
 
-      console.log(`📥 收到响应: ${response.status} ${response.statusText}`);
+      // ========== 修复：声明并赋值 contentType 变量 ==========
+      // 从响应头中获取 Content-Type，不存在则设为空字符串
+      const contentType = response.headers.get('Content-Type') || '';
 
       // ========== 检查并修改 HTML 响应 ==========
       const isHtml = contentType.includes('text/html') || 
@@ -241,6 +238,7 @@ export default async (request: Request, context: Context) => {
           console.error('❌ 修改 HTML 时出错:', error);
         }
       }
+
       // ========== 特殊处理 /login/ 路径 ==========
       if (/^\/login\/.*/.test(path)) {
         try {
@@ -318,7 +316,9 @@ export default async (request: Request, context: Context) => {
 
     } catch (error) {
       console.error('❌ 代理请求失败:', error);
-      return new Response(`代理请求失败: ${error.message}`, {
+      // 类型守卫：确保 error 具有 message 属性
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      return new Response(`代理请求失败: ${errorMessage}`, {
         status: 500,
         headers: {
           'Content-Type': 'text/plain',
